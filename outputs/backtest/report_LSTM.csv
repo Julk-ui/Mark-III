@@ -1,0 +1,2 @@
+model,architecture,batch_size,dropout,early_stopping_patience,epochs,learning_rate,n_layers,units,window,rmse,mae,hit_rate,accuracy,dm_stat,dm_pvalue
+LSTM,stacked_lstm,64,0.2,3,10,0.001,1,32,20,0.005538,0.004697,20.0,20.0,,

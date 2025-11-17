@@ -1,0 +1,182 @@
+# ===========================================
+# CONFIGURACIÓN DEL PROYECTO DE TRADING
+# ===========================================
+
+# --- CONEXIÓN MT5 ---
+mt5:
+  login: 68238343
+  password: "Colombia123*"
+  server: "RoboForex-Pro"
+  path: "C:\\Program Files\\RoboForex - MetaTrader 5\\terminal64.exe"
+
+validation:
+  mode: last_n
+  n: 500
+
+# --- DATOS ---
+data:
+  symbol: "EURUSD"
+  timeframe: "D1"  # D1, H1, H4, M15, etc.
+  n_bars: 1500
+  use_cache: false
+  cache_expiry_hours: 24
+  pip_size: 0.0001
+  
+  # Símbolos adicionales (para análisis multi-activo)
+  additional_symbols:
+    - "GBPUSD"
+    - "US500"  # S&P 500
+
+# --- LIMPIEZA DE DATOS ---
+data_cleaning:
+  handle_missing: "ffill"        # ffill, bfill, interpolate, drop
+  outlier_method: "iqr"          # iqr, zscore
+  outlier_threshold: 3.0
+  handle_outliers: "cap"         # cap, remove, interpolate
+  remove_duplicates: true
+  validate_ohlc: true
+  min_valid_ratio: 0.90
+
+# --- ANÁLISIS EXPLORATORIO (EDA) ---
+eda:
+  enabled: true
+  output_dir: "outputs/eda"
+  price_col: "Close"
+  
+  # Gráficos a generar
+  plots:
+    price_series: true
+    returns_distribution: true
+    qq_plot: true
+    acf_pacf: true
+    rolling_volatility: true
+    seasonal_decomposition: true
+  
+  # Parámetros de análisis
+  acf_lags: 40
+  rolling_windows: [20, 60, 120]
+  seasonal_period: 7  # Para descomposición (7 = semanal)
+
+# --- FEATURE ENGINEERING ---
+features:
+  # Retornos
+  returns:
+    enabled: true
+    periods: [1, 5, 10]  # Calcular retornos a múltiples horizontes
+  
+  # Indicadores técnicos
+  technical_indicators:
+    enabled: true
+    indicators:
+      - sma_20
+      - sma_50
+      - ema_12
+      - ema_26
+      - rsi_14
+      - macd
+      - bollinger_bands
+      - atr_14
+  
+  # Features rezagados
+  lag_features:
+    enabled: true
+    columns: ["Close", "Volume"]
+    lags: [1, 2, 3, 5, 10]
+
+# --- MODELOS ---
+models:
+  - name: RandomWalk
+    enabled: false
+    # Modelo base sin parámetros
+
+  - name: ARIMA
+    enabled: true
+    # Rejilla de parámetros para Grid Search.
+    # El pipeline probará todas las combinaciones posibles.
+    param_grid:
+      p: [1, 5]
+      d: [ 1]
+      q: [0, 2]
+      # Para ARIMA estacional, se podría añadir:
+      # seasonal_order: [[1,1,1,12], [0,1,1,12]]
+    
+  - name: PROPHET
+    enabled: true
+    param_grid:
+      changepoint_prior_scale: [0.1]
+      seasonality_prior_scale: [10.0]
+      seasonality_mode: ["multiplicative"]
+      yearly_seasonality: [false]
+      weekly_seasonality: [true]
+      daily_seasonality: [false]
+      use_lagged_regressors: [true] # <-- AÑADIR ESTA LÍNEA
+    
+  - name: LSTM
+    enabled: true
+    param_grid:
+      # --- Grid Search Reducido (~2 horas) ---
+      window: [20]                # Probar ventana corta y larga
+      learning_rate: [0.001]          # Tasa de aprendizaje fija por ahora
+      
+      # --- Arquitectura del Modelo ---
+      architecture: ["stacked_lstm"] # Probar diferentes arquitecturas
+      n_layers: [1]                # Probar con 1 o 2 capas LSTM
+      units: [32]                 # Probar con pocas y muchas neuronas
+      dropout: [0.2]                  # Tasa de dropout fija
+
+      # --- Parámetros de Entrenamiento ---
+      epochs: [10]                    # Épocas fijas
+      batch_size: [64]                # Tamaño de lote fijo
+      early_stopping_patience: [3]   # Implementar Early Stopping para evitar sobreajuste y ahorrar tiempo
+
+# --- BACKTESTING ---
+backtest:
+  enabled: true
+  initial_train: 800          # Datos para entrenamiento inicial
+  step: 150                    # Paso de rolling window (aumentado)
+  horizon: 1                  # Horizonte de predicción
+  target: "Return_1"          # Columna objetivo exacta (Return_1, Close, etc.)
+  
+  # Métricas a calcular
+  metrics:
+    - mae
+    - rmse
+    - hit_rate # Renombrado de directional_accuracy para mayor claridad
+  
+  # Umbrales para señales
+  threshold_pips: 12.0
+  pip_size: 0.0001
+
+# --- OUTPUT ---
+output:
+  dir: "outputs"
+  save_predictions: true
+  save_models: true
+  save_plots: true
+  
+  # Formatos de exportación
+  formats:
+    - csv
+    - excel
+    - pdf
+
+# --- LOGGING ---
+logging:
+  enabled: true
+  level: "INFO"               # DEBUG, INFO, WARNING, ERROR
+  to_file: true
+  file_path: "logs/trading.log"
+  to_console: true
+
+# --- EJECUCIÓN ---
+execution:
+  mode: "backtest"            # eda, train, backtest, production
+  parallel: false             # Ejecutar modelos en paralelo
+  n_jobs: -1                  # -1 para usar todos los cores
+
+# --- VALIDACIÓN ---
+validation:
+  enabled: true
+  method: "time_series_split"  # time_series_split, expanding_window
+  n_splits: 5
+  test_size: 0.2

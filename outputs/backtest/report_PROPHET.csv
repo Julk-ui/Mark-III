@@ -1,0 +1,2 @@
+model,changepoint_prior_scale,daily_seasonality,seasonality_mode,seasonality_prior_scale,use_lagged_regressors,weekly_seasonality,yearly_seasonality,rmse,mae,hit_rate,accuracy,dm_stat,dm_pvalue
+PROPHET,0.1,False,multiplicative,10.0,True,True,False,0.002833,0.002294,60.0,60.0,,

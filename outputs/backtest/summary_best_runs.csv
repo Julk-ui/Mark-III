@@ -1,4 +1,5 @@
-model,d,p,q,rmse,mae,hit_rate,accuracy,dm_stat,dm_pvalue,changepoint_prior_scale,daily_seasonality,seasonality_mode,seasonality_prior_scale,use_lagged_regressors,weekly_seasonality,yearly_seasonality,architecture,batch_size,dropout,early_stopping_patience,epochs,learning_rate,n_layers,units,window
-ARIMA,1.0,1.0,2.0,0.004717,0.004185,40.0,40.0,,,,,,,,,,,,,,,,,,
-LSTM,,,,0.005538,0.004697,20.0,20.0,,,,,,,,,,stacked_lstm,64.0,0.2,3.0,10.0,0.001,1.0,32.0,20.0
-PROPHET,,,,0.002833,0.002294,60.0,60.0,,,0.1,False,multiplicative,10.0,True,True,False,,,,,,,,,
+model,rmse,mae,hit_rate,dm_stat,dm_pvalue,sharpe,sortino,max_drawdown,profit_factor,win_rate,payoff_ratio,d,p,q,changepoint_prior_scale,daily_seasonality,seasonality_mode,seasonality_prior_scale,use_lagged_regressors,weekly_seasonality,yearly_seasonality,architecture,batch_size,dropout,early_stopping_patience,epochs,learning_rate,n_layers,units,window
+ARIMA,0.003093,0.002953,60.0,-0.194129,0.846075,9.9485,150.722054,-0.002507,4.727513,60.0,3.151675,1.0,1.0,0.0,,,,,,,,,,,,,,,,
+LSTM,0.003586,0.003121,60.0,0.709069,0.478282,1.216381,27.244907,-0.003978,1.214366,60.0,0.809577,,,,,,,,,,,stacked_lstm,64.0,0.2,3.0,10.0,0.001,1.0,32.0,20.0
+PROPHET,0.00416,0.003209,60.0,0.407355,0.683747,9.9485,150.722054,-0.002507,4.727513,60.0,3.151675,,,,0.1,False,multiplicative,10.0,True,True,False,,,,,,,,,
+RandomWalk,0.003257,0.002872,0.0,,,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,,,,,,,,,,,,,,

@@ -10989,3 +10989,1152 @@ cwd: None
 💾 Señales de producción guardadas en: outputs\production\production_signals.csv
 2025-11-17 16:09:58 | INFO     | ✅ MODO PRODUCCIÓN COMPLETADO
 
+2025-11-17 19:44:09 | INFO     | ============================================================
+2025-11-17 19:44:09 | INFO     | TRADING PIPELINE INICIADO
+2025-11-17 19:44:09 | INFO     | ============================================================
+2025-11-17 19:44:09 | INFO     | 📁 Directorios de trabajo configurados
+2025-11-17 19:44:09 | INFO     | 🚀 Ejecutando modo: BACKTEST
+2025-11-17 19:44:09 | INFO     | 
+============================================================
+2025-11-17 19:44:09 | INFO     | MODO: BACKTESTING
+2025-11-17 19:44:09 | INFO     | ============================================================
+
+2025-11-17 19:44:09 | INFO     | PASO 1: CARGANDO DATOS
+2025-11-17 19:44:09 | INFO     | ------------------------------------------------------------
+2025-11-17 19:44:09 | INFO     |   -> Símbolo 'EURUSD' cargado desde config/config.yaml
+2025-11-17 19:44:09 | INFO     |   -> Timeframe 'D1' cargado desde config/config.yaml
+2025-11-17 19:44:09 | INFO     | ✓ Datos cargados: 1500 filas, 6 columnas.
+2025-11-17 19:44:09 | INFO     | PASO 2: LIMPIANDO DATOS
+2025-11-17 19:44:09 | INFO     | ------------------------------------------------------------
+2025-11-17 19:44:09 | INFO     | ✓ Datos limpios: 1500 filas restantes.
+2025-11-17 19:44:09 | INFO     | PASO 3: GENERANDO FEATURES
+2025-11-17 19:44:09 | INFO     | ------------------------------------------------------------
+2025-11-17 19:44:09 | INFO     |   -> Retornos agregados para períodos: [1, 5, 10]
+2025-11-17 19:44:09 | INFO     |   -> Indicadores técnicos agregados.
+2025-11-17 19:44:09 | INFO     |   -> Lags agregados para la columna: 'Close'
+2025-11-17 19:44:09 | INFO     |   -> Lags agregados para la columna: 'Volume'
+2025-11-17 19:44:09 | INFO     |   -> Conteos de valores NaN generados por las features:
+2025-11-17 19:44:09 | INFO     | ✓ Features generadas. Total columnas: 34.
+2025-11-17 19:44:09 | INFO     | 튜 PASO 4: INICIANDO BÚSQUEDA DE HIPERPARÁMETROS
+2025-11-17 19:44:09 | INFO     | ------------------------------------------------------------
+2025-11-17 19:44:09 | INFO     | 
+🔥 Procesando modelo: ARIMA
+2025-11-17 19:44:09 | INFO     |   -> Probando combinación 1/4: {'d': 1, 'p': 1, 'q': 0}
+2025-11-17 19:44:09 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-17 19:44:10 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-17 19:44:10 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-17 19:44:10 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-17 19:44:10 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-17 19:44:10 | INFO     |     - Métricas: {'rmse': 0.003093, 'mae': 0.002953, 'hit_rate': 60.0, 'accuracy': 60.0, 'dm_stat': nan, 'dm_pvalue': nan}
+2025-11-17 19:44:10 | INFO     |   -> Probando combinación 2/4: {'d': 1, 'p': 1, 'q': 2}
+2025-11-17 19:44:10 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-17 19:44:11 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-17 19:44:11 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-17 19:44:12 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-17 19:44:12 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-17 19:44:12 | INFO     |     - Métricas: {'rmse': 0.003673, 'mae': 0.003416, 'hit_rate': 20.0, 'accuracy': 20.0, 'dm_stat': nan, 'dm_pvalue': nan}
+2025-11-17 19:44:12 | INFO     |   -> Probando combinación 3/4: {'d': 1, 'p': 5, 'q': 0}
+2025-11-17 19:44:12 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-17 19:44:12 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-17 19:44:12 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-17 19:44:13 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-17 19:44:13 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-17 19:44:13 | INFO     |     - Métricas: {'rmse': 0.003512, 'mae': 0.003013, 'hit_rate': 60.0, 'accuracy': 60.0, 'dm_stat': nan, 'dm_pvalue': nan}
+2025-11-17 19:44:13 | INFO     |   -> Probando combinación 4/4: {'d': 1, 'p': 5, 'q': 2}
+2025-11-17 19:44:13 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-17 19:44:13 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-17 19:44:14 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-17 19:44:14 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-17 19:44:15 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-17 19:44:15 | INFO     |     - Métricas: {'rmse': 0.003219, 'mae': 0.003033, 'hit_rate': 20.0, 'accuracy': 20.0, 'dm_stat': nan, 'dm_pvalue': nan}
+2025-11-17 19:44:15 | INFO     |     💾 Reporte para ARIMA guardado en: outputs\backtest\report_ARIMA.csv
+2025-11-17 19:44:15 | INFO     | 
+🔥 Procesando modelo: PROPHET
+2025-11-17 19:44:15 | INFO     |   -> Probando combinación 1/1: {'changepoint_prior_scale': 0.1, 'daily_seasonality': False, 'seasonality_mode': 'multiplicative', 'seasonality_prior_scale': 10.0, 'use_lagged_regressors': True, 'weekly_seasonality': True, 'yearly_seasonality': False}
+2025-11-17 19:44:15 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-17 19:44:16 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-17 19:44:16 | DEBUG    | Adding TBB (C:\Users\USER\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\prophet\stan_model\cmdstan-2.33.1\stan\lib\stan_math\lib\tbb) to PATH
+2025-11-17 19:44:16 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp5kxznarm\qsl4yz1r.json
+2025-11-17 19:44:17 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp5kxznarm\kqiu58g7.json
+2025-11-17 19:44:17 | DEBUG    | idx 0
+2025-11-17 19:44:17 | DEBUG    | running CmdStan, num_threads: None
+2025-11-17 19:44:17 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=36563', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\qsl4yz1r.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\kqiu58g7.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\prophet_modelk3fk9iy8\\prophet_model-20251117194417.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-17 19:44:17 | INFO     | Chain [1] start processing
+2025-11-17 19:44:19 | INFO     | Chain [1] done processing
+2025-11-17 19:44:19 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-17 19:44:19 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-17 19:44:19 | DEBUG    | TBB already found in load path
+2025-11-17 19:44:19 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp5kxznarm\h71rcff7.json
+2025-11-17 19:44:20 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp5kxznarm\rk3tuafu.json
+2025-11-17 19:44:20 | DEBUG    | idx 0
+2025-11-17 19:44:20 | DEBUG    | running CmdStan, num_threads: None
+2025-11-17 19:44:20 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=44824', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\h71rcff7.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\rk3tuafu.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\prophet_model2rmh1ek4\\prophet_model-20251117194420.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-17 19:44:20 | INFO     | Chain [1] start processing
+2025-11-17 19:44:21 | INFO     | Chain [1] done processing
+2025-11-17 19:44:21 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-17 19:44:21 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-17 19:44:21 | DEBUG    | TBB already found in load path
+2025-11-17 19:44:22 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp5kxznarm\uxs_4n4z.json
+2025-11-17 19:44:22 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp5kxznarm\ijv_f2gm.json
+2025-11-17 19:44:22 | DEBUG    | idx 0
+2025-11-17 19:44:22 | DEBUG    | running CmdStan, num_threads: None
+2025-11-17 19:44:22 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=27009', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\uxs_4n4z.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\ijv_f2gm.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\prophet_model6cu357mm\\prophet_model-20251117194422.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-17 19:44:22 | INFO     | Chain [1] start processing
+2025-11-17 19:44:24 | INFO     | Chain [1] done processing
+2025-11-17 19:44:24 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-17 19:44:24 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-17 19:44:24 | DEBUG    | TBB already found in load path
+2025-11-17 19:44:24 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp5kxznarm\py1zyhe4.json
+2025-11-17 19:44:25 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp5kxznarm\cx15ywka.json
+2025-11-17 19:44:25 | DEBUG    | idx 0
+2025-11-17 19:44:25 | DEBUG    | running CmdStan, num_threads: None
+2025-11-17 19:44:25 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=72902', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\py1zyhe4.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\cx15ywka.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\prophet_model3rly8ni9\\prophet_model-20251117194425.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-17 19:44:25 | INFO     | Chain [1] start processing
+2025-11-17 19:44:26 | INFO     | Chain [1] done processing
+2025-11-17 19:44:27 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-17 19:44:27 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-17 19:44:27 | DEBUG    | TBB already found in load path
+2025-11-17 19:44:27 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp5kxznarm\4tb5i80e.json
+2025-11-17 19:44:28 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp5kxznarm\8dlp5a_k.json
+2025-11-17 19:44:28 | DEBUG    | idx 0
+2025-11-17 19:44:28 | DEBUG    | running CmdStan, num_threads: None
+2025-11-17 19:44:28 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=37956', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\4tb5i80e.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\8dlp5a_k.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\prophet_modelvildb0jk\\prophet_model-20251117194428.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-17 19:44:28 | INFO     | Chain [1] start processing
+2025-11-17 19:44:30 | INFO     | Chain [1] done processing
+2025-11-17 19:44:30 | INFO     |     - Métricas: {'rmse': 0.00416, 'mae': 0.003209, 'hit_rate': 60.0, 'accuracy': 60.0, 'dm_stat': nan, 'dm_pvalue': nan}
+2025-11-17 19:44:30 | INFO     |     💾 Reporte para PROPHET guardado en: outputs\backtest\report_PROPHET.csv
+2025-11-17 19:44:30 | INFO     | 
+🔥 Procesando modelo: LSTM
+2025-11-17 19:44:30 | INFO     |   -> Probando combinación 1/1: {'architecture': 'stacked_lstm', 'batch_size': 64, 'dropout': 0.2, 'early_stopping_patience': 3, 'epochs': 10, 'learning_rate': 0.001, 'n_layers': 1, 'units': 32, 'window': 20}
+2025-11-17 19:44:30 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-17 19:44:31 | INFO     | Model: "sequential"
+2025-11-17 19:44:31 | INFO     | _________________________________________________________________
+2025-11-17 19:44:31 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-17 19:44:31 | INFO     | =================================================================
+2025-11-17 19:44:31 | INFO     |  lstm (LSTM)                 (None, 32)                8448      
+2025-11-17 19:44:31 | INFO     |                                                                  
+2025-11-17 19:44:31 | INFO     |  dropout (Dropout)           (None, 32)                0         
+2025-11-17 19:44:31 | INFO     |                                                                  
+2025-11-17 19:44:31 | INFO     |  dense (Dense)               (None, 1)                 33        
+2025-11-17 19:44:31 | INFO     |                                                                  
+2025-11-17 19:44:31 | INFO     | =================================================================
+2025-11-17 19:44:31 | INFO     | Total params: 8,481
+2025-11-17 19:44:31 | INFO     | Trainable params: 8,481
+2025-11-17 19:44:31 | INFO     | Non-trainable params: 0
+2025-11-17 19:44:32 | INFO     | _________________________________________________________________
+2025-11-17 19:44:38 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-17 19:44:39 | INFO     | Model: "sequential_1"
+2025-11-17 19:44:39 | INFO     | _________________________________________________________________
+2025-11-17 19:44:39 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-17 19:44:39 | INFO     | =================================================================
+2025-11-17 19:44:39 | INFO     |  lstm_1 (LSTM)               (None, 32)                8448      
+2025-11-17 19:44:39 | INFO     |                                                                  
+2025-11-17 19:44:39 | INFO     |  dropout_1 (Dropout)         (None, 32)                0         
+2025-11-17 19:44:39 | INFO     |                                                                  
+2025-11-17 19:44:39 | INFO     |  dense_1 (Dense)             (None, 1)                 33        
+2025-11-17 19:44:39 | INFO     |                                                                  
+2025-11-17 19:44:39 | INFO     | =================================================================
+2025-11-17 19:44:39 | INFO     | Total params: 8,481
+2025-11-17 19:44:39 | INFO     | Trainable params: 8,481
+2025-11-17 19:44:39 | INFO     | Non-trainable params: 0
+2025-11-17 19:44:39 | INFO     | _________________________________________________________________
+2025-11-17 19:44:44 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-17 19:44:45 | INFO     | Model: "sequential_2"
+2025-11-17 19:44:45 | INFO     | _________________________________________________________________
+2025-11-17 19:44:45 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-17 19:44:45 | INFO     | =================================================================
+2025-11-17 19:44:45 | INFO     |  lstm_2 (LSTM)               (None, 32)                8448      
+2025-11-17 19:44:45 | INFO     |                                                                  
+2025-11-17 19:44:45 | INFO     |  dropout_2 (Dropout)         (None, 32)                0         
+2025-11-17 19:44:45 | INFO     |                                                                  
+2025-11-17 19:44:45 | INFO     |  dense_2 (Dense)             (None, 1)                 33        
+2025-11-17 19:44:45 | INFO     |                                                                  
+2025-11-17 19:44:45 | INFO     | =================================================================
+2025-11-17 19:44:45 | INFO     | Total params: 8,481
+2025-11-17 19:44:45 | INFO     | Trainable params: 8,481
+2025-11-17 19:44:45 | INFO     | Non-trainable params: 0
+2025-11-17 19:44:45 | INFO     | _________________________________________________________________
+2025-11-17 19:44:49 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-17 19:44:49 | INFO     | Model: "sequential_3"
+2025-11-17 19:44:49 | INFO     | _________________________________________________________________
+2025-11-17 19:44:49 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-17 19:44:49 | INFO     | =================================================================
+2025-11-17 19:44:49 | INFO     |  lstm_3 (LSTM)               (None, 32)                8448      
+2025-11-17 19:44:49 | INFO     |                                                                  
+2025-11-17 19:44:49 | INFO     |  dropout_3 (Dropout)         (None, 32)                0         
+2025-11-17 19:44:49 | INFO     |                                                                  
+2025-11-17 19:44:49 | INFO     |  dense_3 (Dense)             (None, 1)                 33        
+2025-11-17 19:44:49 | INFO     |                                                                  
+2025-11-17 19:44:49 | INFO     | =================================================================
+2025-11-17 19:44:49 | INFO     | Total params: 8,481
+2025-11-17 19:44:49 | INFO     | Trainable params: 8,481
+2025-11-17 19:44:49 | INFO     | Non-trainable params: 0
+2025-11-17 19:44:49 | INFO     | _________________________________________________________________
+2025-11-17 19:44:55 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-17 19:44:55 | INFO     | Model: "sequential_4"
+2025-11-17 19:44:55 | INFO     | _________________________________________________________________
+2025-11-17 19:44:55 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-17 19:44:55 | INFO     | =================================================================
+2025-11-17 19:44:55 | INFO     |  lstm_4 (LSTM)               (None, 32)                8448      
+2025-11-17 19:44:55 | INFO     |                                                                  
+2025-11-17 19:44:55 | INFO     |  dropout_4 (Dropout)         (None, 32)                0         
+2025-11-17 19:44:55 | INFO     |                                                                  
+2025-11-17 19:44:55 | INFO     |  dense_4 (Dense)             (None, 1)                 33        
+2025-11-17 19:44:55 | INFO     |                                                                  
+2025-11-17 19:44:55 | INFO     | =================================================================
+2025-11-17 19:44:55 | INFO     | Total params: 8,481
+2025-11-17 19:44:55 | INFO     | Trainable params: 8,481
+2025-11-17 19:44:55 | INFO     | Non-trainable params: 0
+2025-11-17 19:44:55 | INFO     | _________________________________________________________________
+2025-11-17 19:45:00 | WARNING  | 5 out of the last 5 calls to <function Model.make_predict_function.<locals>.predict_function at 0x0000022FE8B2D1C0> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+2025-11-17 19:45:00 | INFO     |     - Métricas: {'rmse': 0.004458, 'mae': 0.004146, 'hit_rate': 0.0, 'accuracy': 0.0, 'dm_stat': nan, 'dm_pvalue': nan}
+2025-11-17 19:45:00 | INFO     |     💾 Reporte para LSTM guardado en: outputs\backtest\report_LSTM.csv
+2025-11-17 19:45:00 | INFO     | 
+📄 Resumen consolidado de mejores ejecuciones guardado en: outputs\backtest\summary_best_runs.csv
+2025-11-17 19:45:00 | INFO     | 
+============================================================
+2025-11-17 19:45:00 | INFO     | 🏆 ENCONTRANDO MEJORES HIPERPARÁMETROS
+2025-11-17 19:45:00 | INFO     | ============================================================
+2025-11-17 19:45:00 | INFO     |   -> Mejor para ARIMA: RMSE=0.003093 con params={'d': 1.0, 'p': 1.0, 'q': 0.0}
+2025-11-17 19:45:00 | INFO     |   -> Mejor para LSTM: RMSE=0.004458 con params={'architecture': 'stacked_lstm', 'batch_size': 64.0, 'dropout': 0.2, 'early_stopping_patience': 3.0, 'epochs': 10.0, 'learning_rate': 0.001, 'n_layers': 1.0, 'units': 32.0, 'window': 20.0}
+2025-11-17 19:45:00 | INFO     |   -> Mejor para PROPHET: RMSE=0.004160 con params={'changepoint_prior_scale': 0.1, 'daily_seasonality': False, 'seasonality_mode': 'multiplicative', 'seasonality_prior_scale': 10.0, 'use_lagged_regressors': True, 'weekly_seasonality': True, 'yearly_seasonality': False}
+2025-11-17 19:45:00 | INFO     | 
+💾 Configuración optimizada guardada en: config\config_optimizado.yaml
+2025-11-17 19:45:00 | INFO     | 
+🧠 Reentrenando y guardando modelos óptimos...
+2025-11-17 19:45:00 | INFO     |     -> Entrenando ARIMA final con params={'d': 1.0, 'p': 1.0, 'q': 0.0} sobre 1499 observaciones...
+2025-11-17 19:45:00 | INFO     |     -> Modelo ARIMA guardado en: outputs\models\arima_best.pkl
+2025-11-17 19:45:00 | INFO     |     ✅ Modelo ARIMA entrenado y guardado en carpeta: outputs\models (nombre base: arima_best)
+2025-11-17 19:45:00 | INFO     |     -> Entrenando LSTM final con params={'architecture': 'stacked_lstm', 'batch_size': 64.0, 'dropout': 0.2, 'early_stopping_patience': 3.0, 'epochs': 10.0, 'learning_rate': 0.001, 'n_layers': 1.0, 'units': 32.0, 'window': 20.0} sobre 1499 observaciones...
+2025-11-17 19:45:01 | INFO     | Model: "sequential_5"
+2025-11-17 19:45:01 | INFO     | _________________________________________________________________
+2025-11-17 19:45:01 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-17 19:45:01 | INFO     | =================================================================
+2025-11-17 19:45:01 | INFO     |  lstm_5 (LSTM)               (None, 32)                8448      
+2025-11-17 19:45:01 | INFO     |                                                                  
+2025-11-17 19:45:01 | INFO     |  dropout_5 (Dropout)         (None, 32)                0         
+2025-11-17 19:45:01 | INFO     |                                                                  
+2025-11-17 19:45:01 | INFO     |  dense_5 (Dense)             (None, 1)                 33        
+2025-11-17 19:45:01 | INFO     |                                                                  
+2025-11-17 19:45:01 | INFO     | =================================================================
+2025-11-17 19:45:01 | INFO     | Total params: 8,481
+2025-11-17 19:45:01 | INFO     | Trainable params: 8,481
+2025-11-17 19:45:01 | INFO     | Non-trainable params: 0
+2025-11-17 19:45:01 | INFO     | _________________________________________________________________
+2025-11-17 19:45:06 | WARNING  | 6 out of the last 6 calls to <function Model.make_predict_function.<locals>.predict_function at 0x0000022FE0C66980> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+2025-11-17 19:45:07 | INFO     | [LSTM] Modelo guardado en: outputs\models\lstm_best.keras
+2025-11-17 19:45:07 | INFO     | [LSTM] Scalers guardados en: outputs\models\lstm_best.scalers.pkl
+2025-11-17 19:45:07 | INFO     |     -> Modelo LSTM final guardado en: outputs\models\lstm_best.keras
+2025-11-17 19:45:07 | INFO     |     ✅ Modelo LSTM entrenado y guardado en carpeta: outputs\models (nombre base: lstm_best)
+2025-11-17 19:45:07 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-17 19:45:07 | DEBUG    | TBB already found in load path
+2025-11-17 19:45:07 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp5kxznarm\_rn2at5s.json
+2025-11-17 19:45:08 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp5kxznarm\8szppu8a.json
+2025-11-17 19:45:08 | DEBUG    | idx 0
+2025-11-17 19:45:08 | DEBUG    | running CmdStan, num_threads: None
+2025-11-17 19:45:08 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=59642', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\_rn2at5s.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\8szppu8a.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp5kxznarm\\prophet_model2dywdp8f\\prophet_model-20251117194508.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-17 19:45:08 | INFO     | Chain [1] start processing
+2025-11-17 19:45:10 | INFO     | Chain [1] done processing
+2025-11-17 19:45:10 | INFO     |     ✅ Modelo Prophet guardado en: outputs\models\prophet_best.pkl
+2025-11-17 19:45:10 | INFO     |     ✅ Modelo PROPHET entrenado y guardado en carpeta: outputs\models (nombre base: prophet_best)
+2025-11-17 19:45:10 | INFO     | 
+✅ Proceso de optimización y guardado de modelos completado.
+2025-11-17 19:45:10 | INFO     | 
+✅ MODO BACKTEST COMPLETADO
+2025-11-17 20:28:47 | INFO     | ============================================================
+2025-11-17 20:28:47 | INFO     | TRADING PIPELINE INICIADO
+2025-11-17 20:28:47 | INFO     | ============================================================
+2025-11-17 20:28:47 | INFO     | 📁 Directorios de trabajo configurados
+2025-11-17 20:28:47 | INFO     | 🚀 Ejecutando modo: PRODUCTION
+2025-11-17 20:28:47 | INFO     | 
+============================================================
+2025-11-17 20:28:47 | INFO     | MODO: PRODUCCIÓN
+2025-11-17 20:28:47 | INFO     | ============================================================
+
+2025-11-17 20:28:47 | INFO     | 📥 Cargando datos para producción...
+2025-11-17 20:28:47 | INFO     | PASO 1: CARGANDO DATOS
+2025-11-17 20:28:47 | INFO     | ------------------------------------------------------------
+2025-11-17 20:28:47 | INFO     |   -> Símbolo 'EURUSD' cargado desde config/config.yaml
+2025-11-17 20:28:47 | INFO     |   -> Timeframe 'D1' cargado desde config/config.yaml
+2025-11-17 20:28:47 | INFO     | ✓ Datos cargados: 1500 filas, 6 columnas.
+2025-11-17 20:28:47 | INFO     | PASO 2: LIMPIANDO DATOS
+2025-11-17 20:28:47 | INFO     | ------------------------------------------------------------
+2025-11-17 20:28:48 | INFO     | ✓ Datos limpios: 1500 filas restantes.
+2025-11-17 20:28:48 | INFO     | PASO 3: GENERANDO FEATURES
+2025-11-17 20:28:48 | INFO     | ------------------------------------------------------------
+2025-11-17 20:28:48 | INFO     |   -> Retornos agregados para períodos: [1, 5, 10]
+2025-11-17 20:28:48 | INFO     |   -> Indicadores técnicos agregados.
+2025-11-17 20:28:48 | INFO     |   -> Lags agregados para la columna: 'Close'
+2025-11-17 20:28:48 | INFO     |   -> Lags agregados para la columna: 'Volume'
+2025-11-17 20:28:48 | INFO     |   -> Conteos de valores NaN generados por las features:
+2025-11-17 20:28:48 | INFO     | ✓ Features generadas. Total columnas: 34.
+2025-11-17 20:28:48 | INFO     | 🏆 Modelo campeón global según backtest / RMSE: ARIMA
+2025-11-17 20:28:48 | INFO     | 🔎 Generando señales de producción para TODOS los modelos habilitados...
+
+2025-11-17 20:28:48 | INFO     | ➡ Procesando modelo: ARIMA | params={'d': 1.0, 'p': 1.0, 'q': 0.0}
+2025-11-17 20:28:48 | INFO     |   💾 Intentando cargar el modelo desde: outputs\models\arima_best.pkl
+2025-11-17 20:28:48 | INFO     | [ARIMA] Cargado dict desde outputs\models\arima_best.pkl con claves: ['model']
+2025-11-17 20:28:48 | INFO     | [ARIMA] Usando artifact['model'] como modelo.
+2025-11-17 20:28:48 | INFO     | [ARIMA] Modelo cargado desde: outputs\models\arima_best.pkl
+2025-11-17 20:28:48 | INFO     |   📈 Modelo ARIMA -> retorno=-0.001397, signal=SELL, price_now=1.15899, price_target=1.1573703264250734, delta_price=-0.001619673574926539, pips=-16.19673574926539, is_best_model=True
+2025-11-17 20:28:48 | INFO     | ➡ Procesando modelo: LSTM | params={'architecture': 'stacked_lstm', 'batch_size': 64.0, 'dropout': 0.2, 'early_stopping_patience': 3.0, 'epochs': 10.0, 'learning_rate': 0.001, 'n_layers': 1.0, 'units': 32.0, 'window': 20.0}
+2025-11-17 20:28:48 | INFO     |   💾 Intentando cargar el modelo desde: outputs\models\lstm_best.keras
+2025-11-17 20:28:50 | INFO     | [LSTM] Modelo cargado desde: outputs\models\lstm_best.keras
+2025-11-17 20:28:50 | INFO     | [LSTM] Scalers cargados desde: outputs\models\lstm_best.scalers.pkl
+2025-11-17 20:28:52 | INFO     |   📈 Modelo LSTM -> retorno=-0.001260, signal=SELL, price_now=1.15899, price_target=1.1575297332600178, delta_price=-0.001460266739982119, pips=-14.60266739982119, is_best_model=False
+2025-11-17 20:28:52 | INFO     | ➡ Procesando modelo: PROPHET | params={'changepoint_prior_scale': 0.1, 'daily_seasonality': False, 'seasonality_mode': 'multiplicative', 'seasonality_prior_scale': 10.0, 'use_lagged_regressors': True, 'weekly_seasonality': True, 'yearly_seasonality': False}
+2025-11-17 20:28:52 | INFO     |   💾 Intentando cargar el modelo desde: outputs\models\prophet_best.pkl
+2025-11-17 20:28:52 | INFO     | [PROPHET] Modelo cargado desde: outputs\models\prophet_best.pkl
+2025-11-17 20:28:52 | INFO     |   📈 Modelo PROPHET -> retorno=-0.000092, signal=SELL, price_now=1.15899, price_target=1.1588829313942421, delta_price=-0.00010706860575782073, pips=-1.0706860575782073, is_best_model=False
+2025-11-17 20:28:52 | INFO     | 
+💾 Señales de producción guardadas en: outputs\production\production_signals.csv
+2025-11-17 20:28:52 | INFO     | ✅ MODO PRODUCCIÓN COMPLETADO
+
+2025-11-17 20:34:22 | INFO     | ============================================================
+2025-11-17 20:34:22 | INFO     | TRADING PIPELINE INICIADO
+2025-11-17 20:34:22 | INFO     | ============================================================
+2025-11-17 20:34:22 | INFO     | 📁 Directorios de trabajo configurados
+2025-11-17 20:34:22 | INFO     | 🚀 Ejecutando modo: PRODUCTION
+2025-11-17 20:34:22 | INFO     | 
+============================================================
+2025-11-17 20:34:22 | INFO     | MODO: PRODUCCIÓN
+2025-11-17 20:34:22 | INFO     | ============================================================
+
+2025-11-17 20:34:22 | INFO     | 📥 Cargando datos para producción...
+2025-11-17 20:34:22 | INFO     | PASO 1: CARGANDO DATOS
+2025-11-17 20:34:22 | INFO     | ------------------------------------------------------------
+2025-11-17 20:34:22 | INFO     |   -> Símbolo 'EURUSD' cargado desde config/config.yaml
+2025-11-17 20:34:22 | INFO     |   -> Timeframe 'D1' cargado desde config/config.yaml
+2025-11-17 20:34:22 | INFO     | ✓ Datos cargados: 1500 filas, 6 columnas.
+2025-11-17 20:34:22 | INFO     | PASO 2: LIMPIANDO DATOS
+2025-11-17 20:34:22 | INFO     | ------------------------------------------------------------
+2025-11-17 20:34:22 | INFO     | ✓ Datos limpios: 1500 filas restantes.
+2025-11-17 20:34:22 | INFO     | PASO 3: GENERANDO FEATURES
+2025-11-17 20:34:22 | INFO     | ------------------------------------------------------------
+2025-11-17 20:34:22 | INFO     |   -> Retornos agregados para períodos: [1, 5, 10]
+2025-11-17 20:34:22 | INFO     |   -> Indicadores técnicos agregados.
+2025-11-17 20:34:22 | INFO     |   -> Lags agregados para la columna: 'Close'
+2025-11-17 20:34:22 | INFO     |   -> Lags agregados para la columna: 'Volume'
+2025-11-17 20:34:22 | INFO     |   -> Conteos de valores NaN generados por las features:
+2025-11-17 20:34:22 | INFO     | ✓ Features generadas. Total columnas: 34.
+2025-11-17 20:34:23 | INFO     | 🏆 Modelo campeón global según backtest / RMSE: ARIMA
+2025-11-17 20:34:23 | INFO     | 🔎 Generando señales de producción para TODOS los modelos habilitados...
+
+2025-11-17 20:34:23 | INFO     | ➡ Procesando modelo: ARIMA | params={'d': 1.0, 'p': 1.0, 'q': 0.0}
+2025-11-17 20:34:23 | INFO     |   💾 Intentando cargar el modelo desde: outputs\models\arima_best.pkl
+2025-11-17 20:34:23 | INFO     | [ARIMA] Cargado dict desde outputs\models\arima_best.pkl con claves: ['model']
+2025-11-17 20:34:23 | INFO     | [ARIMA] Usando artifact['model'] como modelo.
+2025-11-17 20:34:23 | INFO     | [ARIMA] Modelo cargado desde: outputs\models\arima_best.pkl
+2025-11-17 20:34:23 | INFO     |   📈 Modelo ARIMA -> retorno=-0.001397, signal=SELL, price_now=1.15907, price_target=1.1574502146261054, delta_price=-0.0016197853738946222, pips=-16.197853738946222, is_best_model=True
+2025-11-17 20:34:23 | INFO     | ➡ Procesando modelo: LSTM | params={'architecture': 'stacked_lstm', 'batch_size': 64.0, 'dropout': 0.2, 'early_stopping_patience': 3.0, 'epochs': 10.0, 'learning_rate': 0.001, 'n_layers': 1.0, 'units': 32.0, 'window': 20.0}
+2025-11-17 20:34:23 | INFO     |   💾 Intentando cargar el modelo desde: outputs\models\lstm_best.keras
+2025-11-17 20:34:23 | INFO     | [LSTM] Modelo cargado desde: outputs\models\lstm_best.keras
+2025-11-17 20:34:23 | INFO     | [LSTM] Scalers cargados desde: outputs\models\lstm_best.scalers.pkl
+2025-11-17 20:34:24 | INFO     |   📈 Modelo LSTM -> retorno=-0.001259, signal=SELL, price_now=1.15907, price_target=1.157610367986752, delta_price=-0.0014596320132480578, pips=-14.596320132480578, is_best_model=False
+2025-11-17 20:34:24 | INFO     | ➡ Procesando modelo: PROPHET | params={'changepoint_prior_scale': 0.1, 'daily_seasonality': False, 'seasonality_mode': 'multiplicative', 'seasonality_prior_scale': 10.0, 'use_lagged_regressors': True, 'weekly_seasonality': True, 'yearly_seasonality': False}
+2025-11-17 20:34:24 | INFO     |   💾 Intentando cargar el modelo desde: outputs\models\prophet_best.pkl
+2025-11-17 20:34:24 | INFO     | [PROPHET] Modelo cargado desde: outputs\models\prophet_best.pkl
+2025-11-17 20:34:24 | INFO     |   📈 Modelo PROPHET -> retorno=-0.000023, signal=SELL, price_now=1.15907, price_target=1.1590430113339736, delta_price=-2.6988666026461772e-05, pips=-0.2698866602646177, is_best_model=False
+2025-11-17 20:34:24 | INFO     | 
+💾 Señales de producción guardadas en: outputs\production\production_signals.csv
+2025-11-17 20:34:24 | INFO     | ✅ MODO PRODUCCIÓN COMPLETADO
+
+2025-11-17 21:40:05 | INFO     | ============================================================
+2025-11-17 21:40:05 | INFO     | TRADING PIPELINE INICIADO
+2025-11-17 21:40:05 | INFO     | ============================================================
+2025-11-17 21:40:05 | INFO     | 📁 Directorios de trabajo configurados
+2025-11-17 21:40:05 | INFO     | 🚀 Ejecutando modo: BACKTEST
+2025-11-17 21:40:05 | INFO     | 
+============================================================
+2025-11-17 21:40:05 | INFO     | MODO: BACKTESTING
+2025-11-17 21:40:05 | INFO     | ============================================================
+
+2025-11-17 21:40:05 | INFO     | PASO 1: CARGANDO DATOS
+2025-11-17 21:40:05 | INFO     | ------------------------------------------------------------
+2025-11-17 21:40:05 | INFO     |   -> Símbolo 'EURUSD' cargado desde config/config.yaml
+2025-11-17 21:40:05 | INFO     |   -> Timeframe 'D1' cargado desde config/config.yaml
+2025-11-17 21:40:05 | INFO     | ✓ Datos cargados: 1500 filas, 6 columnas.
+2025-11-17 21:40:05 | INFO     | PASO 2: LIMPIANDO DATOS
+2025-11-17 21:40:05 | INFO     | ------------------------------------------------------------
+2025-11-17 21:40:05 | INFO     | ✓ Datos limpios: 1500 filas restantes.
+2025-11-17 21:40:05 | INFO     | PASO 3: GENERANDO FEATURES
+2025-11-17 21:40:05 | INFO     | ------------------------------------------------------------
+2025-11-17 21:40:05 | INFO     |   -> Retornos agregados para períodos: [1, 5, 10]
+2025-11-17 21:40:05 | INFO     |   -> Indicadores técnicos agregados.
+2025-11-17 21:40:05 | INFO     |   -> Lags agregados para la columna: 'Close'
+2025-11-17 21:40:05 | INFO     |   -> Lags agregados para la columna: 'Volume'
+2025-11-17 21:40:05 | INFO     |   -> Conteos de valores NaN generados por las features:
+2025-11-17 21:40:05 | INFO     | ✓ Features generadas. Total columnas: 34.
+2025-11-17 21:40:05 | INFO     | 튜 PASO 4: INICIANDO BÚSQUEDA DE HIPERPARÁMETROS
+2025-11-17 21:40:05 | INFO     | ------------------------------------------------------------
+2025-11-17 21:40:05 | INFO     | 
+🔥 Procesando modelo: ARIMA
+2025-11-17 21:40:05 | INFO     |   -> Probando combinación 1/4: {'d': 1, 'p': 1, 'q': 0}
+2025-11-17 21:40:05 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-17 21:40:06 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-17 21:40:06 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-17 21:40:07 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-17 21:40:07 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-17 21:40:07 | INFO     |     - Métricas: {'rmse': 0.003093, 'mae': 0.002953, 'hit_rate': 60.0, 'dm_stat': -0.194129, 'dm_pvalue': 0.846075}
+2025-11-17 21:40:07 | INFO     |   -> Probando combinación 2/4: {'d': 1, 'p': 1, 'q': 2}
+2025-11-17 21:40:07 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-17 21:40:09 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-17 21:40:11 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-17 21:40:12 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-17 21:40:13 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-17 21:40:14 | INFO     |     - Métricas: {'rmse': 0.003673, 'mae': 0.003416, 'hit_rate': 20.0, 'dm_stat': 1.36176, 'dm_pvalue': 0.173274}
+2025-11-17 21:40:14 | INFO     |   -> Probando combinación 3/4: {'d': 1, 'p': 5, 'q': 0}
+2025-11-17 21:40:14 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-17 21:40:15 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-17 21:40:16 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-17 21:40:16 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-17 21:40:17 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-17 21:40:18 | INFO     |     - Métricas: {'rmse': 0.003512, 'mae': 0.003013, 'hit_rate': 60.0, 'dm_stat': 0.532805, 'dm_pvalue': 0.594169}
+2025-11-17 21:40:18 | INFO     |   -> Probando combinación 4/4: {'d': 1, 'p': 5, 'q': 2}
+2025-11-17 21:40:18 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-17 21:40:19 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-17 21:40:22 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-17 21:40:23 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-17 21:40:27 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-17 21:40:28 | INFO     |     - Métricas: {'rmse': 0.003219, 'mae': 0.003033, 'hit_rate': 20.0, 'dm_stat': -0.059121, 'dm_pvalue': 0.952855}
+2025-11-17 21:40:28 | INFO     |     💾 Reporte para ARIMA guardado en: outputs\backtest\report_ARIMA.csv
+2025-11-17 21:40:28 | INFO     | 
+🔥 Procesando modelo: PROPHET
+2025-11-17 21:40:28 | INFO     |   -> Probando combinación 1/1: {'changepoint_prior_scale': 0.1, 'daily_seasonality': False, 'seasonality_mode': 'multiplicative', 'seasonality_prior_scale': 10.0, 'use_lagged_regressors': True, 'weekly_seasonality': True, 'yearly_seasonality': False}
+2025-11-17 21:40:28 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-17 21:40:29 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-17 21:40:29 | DEBUG    | Adding TBB (C:\Users\USER\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\prophet\stan_model\cmdstan-2.33.1\stan\lib\stan_math\lib\tbb) to PATH
+2025-11-17 21:40:30 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpy5lts57b\1im4x036.json
+2025-11-17 21:40:32 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpy5lts57b\2iojk25_.json
+2025-11-17 21:40:32 | DEBUG    | idx 0
+2025-11-17 21:40:32 | DEBUG    | running CmdStan, num_threads: None
+2025-11-17 21:40:32 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=91568', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\1im4x036.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\2iojk25_.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\prophet_modeln82p30va\\prophet_model-20251117214032.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-17 21:40:32 | INFO     | Chain [1] start processing
+2025-11-17 21:40:37 | INFO     | Chain [1] done processing
+2025-11-17 21:40:38 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-17 21:40:39 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-17 21:40:39 | DEBUG    | TBB already found in load path
+2025-11-17 21:40:39 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpy5lts57b\v37hx12d.json
+2025-11-17 21:40:42 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpy5lts57b\c_play8s.json
+2025-11-17 21:40:42 | DEBUG    | idx 0
+2025-11-17 21:40:42 | DEBUG    | running CmdStan, num_threads: None
+2025-11-17 21:40:42 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=41324', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\v37hx12d.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\c_play8s.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\prophet_model5d39hafm\\prophet_model-20251117214042.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-17 21:40:42 | INFO     | Chain [1] start processing
+2025-11-17 21:40:47 | INFO     | Chain [1] done processing
+2025-11-17 21:40:48 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-17 21:40:48 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-17 21:40:48 | DEBUG    | TBB already found in load path
+2025-11-17 21:40:49 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpy5lts57b\02fgatqj.json
+2025-11-17 21:40:52 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpy5lts57b\85luusbf.json
+2025-11-17 21:40:52 | DEBUG    | idx 0
+2025-11-17 21:40:52 | DEBUG    | running CmdStan, num_threads: None
+2025-11-17 21:40:52 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=71010', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\02fgatqj.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\85luusbf.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\prophet_modelewpt88hu\\prophet_model-20251117214052.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-17 21:40:52 | INFO     | Chain [1] start processing
+2025-11-17 21:40:58 | INFO     | Chain [1] done processing
+2025-11-17 21:41:00 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-17 21:41:00 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-17 21:41:00 | DEBUG    | TBB already found in load path
+2025-11-17 21:41:00 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpy5lts57b\q02k4jdp.json
+2025-11-17 21:41:04 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpy5lts57b\yneyiwb2.json
+2025-11-17 21:41:04 | DEBUG    | idx 0
+2025-11-17 21:41:04 | DEBUG    | running CmdStan, num_threads: None
+2025-11-17 21:41:04 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=534', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\q02k4jdp.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\yneyiwb2.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\prophet_modeltf4cxmse\\prophet_model-20251117214104.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-17 21:41:04 | INFO     | Chain [1] start processing
+2025-11-17 21:41:10 | INFO     | Chain [1] done processing
+2025-11-17 21:41:12 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-17 21:41:12 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-17 21:41:12 | DEBUG    | TBB already found in load path
+2025-11-17 21:41:12 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpy5lts57b\dbwvio8o.json
+2025-11-17 21:41:17 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpy5lts57b\_r37phe0.json
+2025-11-17 21:41:17 | DEBUG    | idx 0
+2025-11-17 21:41:17 | DEBUG    | running CmdStan, num_threads: None
+2025-11-17 21:41:17 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=64861', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\dbwvio8o.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\_r37phe0.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\prophet_model5jhbkybw\\prophet_model-20251117214117.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-17 21:41:17 | INFO     | Chain [1] start processing
+2025-11-17 21:41:24 | INFO     | Chain [1] done processing
+2025-11-17 21:41:26 | INFO     |     - Métricas: {'rmse': 0.00416, 'mae': 0.003209, 'hit_rate': 60.0, 'dm_stat': 0.407355, 'dm_pvalue': 0.683747}
+2025-11-17 21:41:26 | INFO     |     💾 Reporte para PROPHET guardado en: outputs\backtest\report_PROPHET.csv
+2025-11-17 21:41:26 | INFO     | 
+🔥 Procesando modelo: LSTM
+2025-11-17 21:41:26 | INFO     |   -> Probando combinación 1/1: {'architecture': 'stacked_lstm', 'batch_size': 64, 'dropout': 0.2, 'early_stopping_patience': 3, 'epochs': 10, 'learning_rate': 0.001, 'n_layers': 1, 'units': 32, 'window': 20}
+2025-11-17 21:41:26 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-17 21:41:29 | INFO     | Model: "sequential"
+2025-11-17 21:41:29 | INFO     | _________________________________________________________________
+2025-11-17 21:41:29 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-17 21:41:29 | INFO     | =================================================================
+2025-11-17 21:41:29 | INFO     |  lstm (LSTM)                 (None, 32)                8448      
+2025-11-17 21:41:29 | INFO     |                                                                  
+2025-11-17 21:41:29 | INFO     |  dropout (Dropout)           (None, 32)                0         
+2025-11-17 21:41:29 | INFO     |                                                                  
+2025-11-17 21:41:29 | INFO     |  dense (Dense)               (None, 1)                 33        
+2025-11-17 21:41:29 | INFO     |                                                                  
+2025-11-17 21:41:29 | INFO     | =================================================================
+2025-11-17 21:41:29 | INFO     | Total params: 8,481
+2025-11-17 21:41:29 | INFO     | Trainable params: 8,481
+2025-11-17 21:41:29 | INFO     | Non-trainable params: 0
+2025-11-17 21:41:29 | INFO     | _________________________________________________________________
+2025-11-17 21:41:53 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-17 21:41:56 | INFO     | Model: "sequential_1"
+2025-11-17 21:41:56 | INFO     | _________________________________________________________________
+2025-11-17 21:41:56 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-17 21:41:56 | INFO     | =================================================================
+2025-11-17 21:41:56 | INFO     |  lstm_1 (LSTM)               (None, 32)                8448      
+2025-11-17 21:41:56 | INFO     |                                                                  
+2025-11-17 21:41:56 | INFO     |  dropout_1 (Dropout)         (None, 32)                0         
+2025-11-17 21:41:56 | INFO     |                                                                  
+2025-11-17 21:41:56 | INFO     |  dense_1 (Dense)             (None, 1)                 33        
+2025-11-17 21:41:56 | INFO     |                                                                  
+2025-11-17 21:41:56 | INFO     | =================================================================
+2025-11-17 21:41:56 | INFO     | Total params: 8,481
+2025-11-17 21:41:56 | INFO     | Trainable params: 8,481
+2025-11-17 21:41:56 | INFO     | Non-trainable params: 0
+2025-11-17 21:41:56 | INFO     | _________________________________________________________________
+2025-11-17 21:42:14 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-17 21:42:15 | INFO     | Model: "sequential_2"
+2025-11-17 21:42:15 | INFO     | _________________________________________________________________
+2025-11-17 21:42:15 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-17 21:42:15 | INFO     | =================================================================
+2025-11-17 21:42:15 | INFO     |  lstm_2 (LSTM)               (None, 32)                8448      
+2025-11-17 21:42:15 | INFO     |                                                                  
+2025-11-17 21:42:15 | INFO     |  dropout_2 (Dropout)         (None, 32)                0         
+2025-11-17 21:42:15 | INFO     |                                                                  
+2025-11-17 21:42:15 | INFO     |  dense_2 (Dense)             (None, 1)                 33        
+2025-11-17 21:42:15 | INFO     |                                                                  
+2025-11-17 21:42:15 | INFO     | =================================================================
+2025-11-17 21:42:15 | INFO     | Total params: 8,481
+2025-11-17 21:42:15 | INFO     | Trainable params: 8,481
+2025-11-17 21:42:15 | INFO     | Non-trainable params: 0
+2025-11-17 21:42:15 | INFO     | _________________________________________________________________
+2025-11-17 21:42:39 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-17 21:42:40 | INFO     | Model: "sequential_3"
+2025-11-17 21:42:40 | INFO     | _________________________________________________________________
+2025-11-17 21:42:40 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-17 21:42:40 | INFO     | =================================================================
+2025-11-17 21:42:40 | INFO     |  lstm_3 (LSTM)               (None, 32)                8448      
+2025-11-17 21:42:40 | INFO     |                                                                  
+2025-11-17 21:42:40 | INFO     |  dropout_3 (Dropout)         (None, 32)                0         
+2025-11-17 21:42:40 | INFO     |                                                                  
+2025-11-17 21:42:40 | INFO     |  dense_3 (Dense)             (None, 1)                 33        
+2025-11-17 21:42:40 | INFO     |                                                                  
+2025-11-17 21:42:40 | INFO     | =================================================================
+2025-11-17 21:42:40 | INFO     | Total params: 8,481
+2025-11-17 21:42:40 | INFO     | Trainable params: 8,481
+2025-11-17 21:42:40 | INFO     | Non-trainable params: 0
+2025-11-17 21:42:40 | INFO     | _________________________________________________________________
+2025-11-17 21:43:01 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-17 21:43:03 | INFO     | Model: "sequential_4"
+2025-11-17 21:43:03 | INFO     | _________________________________________________________________
+2025-11-17 21:43:03 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-17 21:43:03 | INFO     | =================================================================
+2025-11-17 21:43:03 | INFO     |  lstm_4 (LSTM)               (None, 32)                8448      
+2025-11-17 21:43:03 | INFO     |                                                                  
+2025-11-17 21:43:03 | INFO     |  dropout_4 (Dropout)         (None, 32)                0         
+2025-11-17 21:43:03 | INFO     |                                                                  
+2025-11-17 21:43:03 | INFO     |  dense_4 (Dense)             (None, 1)                 33        
+2025-11-17 21:43:03 | INFO     |                                                                  
+2025-11-17 21:43:03 | INFO     | =================================================================
+2025-11-17 21:43:03 | INFO     | Total params: 8,481
+2025-11-17 21:43:03 | INFO     | Trainable params: 8,481
+2025-11-17 21:43:03 | INFO     | Non-trainable params: 0
+2025-11-17 21:43:03 | INFO     | _________________________________________________________________
+2025-11-17 21:43:27 | WARNING  | 5 out of the last 5 calls to <function Model.make_predict_function.<locals>.predict_function at 0x000002A3D63FAB60> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+2025-11-17 21:43:27 | INFO     |     - Métricas: {'rmse': 0.00372, 'mae': 0.003354, 'hit_rate': 20.0, 'dm_stat': 2.150166, 'dm_pvalue': 0.031542}
+2025-11-17 21:43:28 | INFO     |     💾 Reporte para LSTM guardado en: outputs\backtest\report_LSTM.csv
+2025-11-17 21:43:28 | INFO     | 
+📄 Resumen consolidado de mejores ejecuciones guardado en: outputs\backtest\summary_best_runs.csv
+2025-11-17 21:43:28 | INFO     | 
+============================================================
+2025-11-17 21:43:28 | INFO     | 🏆 ENCONTRANDO MEJORES HIPERPARÁMETROS
+2025-11-17 21:43:28 | INFO     | ============================================================
+2025-11-17 21:43:28 | INFO     |   -> Mejor para ARIMA: RMSE=0.003093 con params={'d': 1.0, 'p': 1.0, 'q': 0.0}
+2025-11-17 21:43:28 | INFO     |   -> Mejor para LSTM: RMSE=0.003720 con params={'architecture': 'stacked_lstm', 'batch_size': 64.0, 'dropout': 0.2, 'early_stopping_patience': 3.0, 'epochs': 10.0, 'learning_rate': 0.001, 'n_layers': 1.0, 'units': 32.0, 'window': 20.0}
+2025-11-17 21:43:28 | INFO     |   -> Mejor para PROPHET: RMSE=0.004160 con params={'changepoint_prior_scale': 0.1, 'daily_seasonality': False, 'seasonality_mode': 'multiplicative', 'seasonality_prior_scale': 10.0, 'use_lagged_regressors': True, 'weekly_seasonality': True, 'yearly_seasonality': False}
+2025-11-17 21:43:28 | INFO     | 
+💾 Configuración optimizada guardada en: config\config_optimizado.yaml
+2025-11-17 21:43:28 | INFO     | 
+🧠 Reentrenando y guardando modelos óptimos...
+2025-11-17 21:43:28 | INFO     |     -> Entrenando ARIMA final con params={'d': 1.0, 'p': 1.0, 'q': 0.0} sobre 1499 observaciones...
+2025-11-17 21:43:28 | INFO     |     -> Modelo ARIMA guardado en: outputs\models\arima_best.pkl
+2025-11-17 21:43:28 | INFO     |     ✅ Modelo ARIMA entrenado y guardado en carpeta: outputs\models (nombre base: arima_best)
+2025-11-17 21:43:28 | INFO     |     -> Entrenando LSTM final con params={'architecture': 'stacked_lstm', 'batch_size': 64.0, 'dropout': 0.2, 'early_stopping_patience': 3.0, 'epochs': 10.0, 'learning_rate': 0.001, 'n_layers': 1.0, 'units': 32.0, 'window': 20.0} sobre 1499 observaciones...
+2025-11-17 21:43:30 | INFO     | Model: "sequential_5"
+2025-11-17 21:43:30 | INFO     | _________________________________________________________________
+2025-11-17 21:43:30 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-17 21:43:30 | INFO     | =================================================================
+2025-11-17 21:43:30 | INFO     |  lstm_5 (LSTM)               (None, 32)                8448      
+2025-11-17 21:43:30 | INFO     |                                                                  
+2025-11-17 21:43:30 | INFO     |  dropout_5 (Dropout)         (None, 32)                0         
+2025-11-17 21:43:30 | INFO     |                                                                  
+2025-11-17 21:43:30 | INFO     |  dense_5 (Dense)             (None, 1)                 33        
+2025-11-17 21:43:30 | INFO     |                                                                  
+2025-11-17 21:43:30 | INFO     | =================================================================
+2025-11-17 21:43:30 | INFO     | Total params: 8,481
+2025-11-17 21:43:30 | INFO     | Trainable params: 8,481
+2025-11-17 21:43:30 | INFO     | Non-trainable params: 0
+2025-11-17 21:43:30 | INFO     | _________________________________________________________________
+2025-11-17 21:44:05 | WARNING  | 6 out of the last 6 calls to <function Model.make_predict_function.<locals>.predict_function at 0x000002A3CC2723E0> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+2025-11-17 21:44:06 | INFO     | [LSTM] Modelo guardado en: outputs\models\lstm_best.keras
+2025-11-17 21:44:06 | INFO     | [LSTM] Scalers guardados en: outputs\models\lstm_best.scalers.pkl
+2025-11-17 21:44:06 | INFO     |     -> Modelo LSTM final guardado en: outputs\models\lstm_best.keras
+2025-11-17 21:44:06 | INFO     |     ✅ Modelo LSTM entrenado y guardado en carpeta: outputs\models (nombre base: lstm_best)
+2025-11-17 21:44:06 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-17 21:44:06 | DEBUG    | TBB already found in load path
+2025-11-17 21:44:07 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpy5lts57b\cmlvjqlh.json
+2025-11-17 21:44:12 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpy5lts57b\kmzvgijo.json
+2025-11-17 21:44:12 | DEBUG    | idx 0
+2025-11-17 21:44:12 | DEBUG    | running CmdStan, num_threads: None
+2025-11-17 21:44:12 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=92858', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\cmlvjqlh.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\kmzvgijo.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpy5lts57b\\prophet_modelw7gp0yhp\\prophet_model-20251117214412.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-17 21:44:12 | INFO     | Chain [1] start processing
+2025-11-17 21:44:16 | INFO     | Chain [1] done processing
+2025-11-17 21:44:16 | INFO     |     ✅ Modelo Prophet guardado en: outputs\models\prophet_best.pkl
+2025-11-17 21:44:16 | INFO     |     ✅ Modelo PROPHET entrenado y guardado en carpeta: outputs\models (nombre base: prophet_best)
+2025-11-17 21:44:16 | INFO     | 
+✅ Proceso de optimización y guardado de modelos completado.
+2025-11-17 21:44:16 | INFO     | 
+✅ MODO BACKTEST COMPLETADO
+2025-11-18 12:22:34 | INFO     | ============================================================
+2025-11-18 12:22:34 | INFO     | TRADING PIPELINE INICIADO
+2025-11-18 12:22:34 | INFO     | ============================================================
+2025-11-18 12:22:34 | INFO     | 📁 Directorios de trabajo configurados
+2025-11-18 12:22:34 | INFO     | 🚀 Ejecutando modo: BACKTEST
+2025-11-18 12:22:34 | INFO     | 
+============================================================
+2025-11-18 12:22:34 | INFO     | MODO: BACKTESTING
+2025-11-18 12:22:34 | INFO     | ============================================================
+
+2025-11-18 12:22:34 | INFO     | PASO 1: CARGANDO DATOS
+2025-11-18 12:22:34 | INFO     | ------------------------------------------------------------
+2025-11-18 12:22:34 | INFO     |   -> Símbolo 'EURUSD' cargado desde config/config.yaml
+2025-11-18 12:22:34 | INFO     |   -> Timeframe 'D1' cargado desde config/config.yaml
+2025-11-18 12:22:34 | INFO     | ✓ Datos cargados: 1500 filas, 6 columnas.
+2025-11-18 12:22:34 | INFO     | PASO 2: LIMPIANDO DATOS
+2025-11-18 12:22:34 | INFO     | ------------------------------------------------------------
+2025-11-18 12:22:34 | INFO     | ✓ Datos limpios: 1500 filas restantes.
+2025-11-18 12:22:34 | INFO     | PASO 3: GENERANDO FEATURES
+2025-11-18 12:22:34 | INFO     | ------------------------------------------------------------
+2025-11-18 12:22:34 | INFO     |   -> Retornos agregados para períodos: [1, 5, 10]
+2025-11-18 12:22:34 | INFO     |   -> Indicadores técnicos agregados.
+2025-11-18 12:22:34 | INFO     |   -> Lags agregados para la columna: 'Close'
+2025-11-18 12:22:34 | INFO     |   -> Lags agregados para la columna: 'Volume'
+2025-11-18 12:22:34 | INFO     |   -> Conteos de valores NaN generados por las features:
+2025-11-18 12:22:34 | INFO     | ✓ Features generadas. Total columnas: 34.
+2025-11-18 12:22:34 | INFO     | 튜 PASO 4: INICIANDO BÚSQUEDA DE HIPERPARÁMETROS
+2025-11-18 12:22:34 | INFO     | ------------------------------------------------------------
+2025-11-18 12:22:34 | INFO     | 
+🔥 Procesando modelo: ARIMA
+2025-11-18 12:22:34 | INFO     |   -> Probando combinación 1/4: {'d': 1, 'p': 1, 'q': 0}
+2025-11-18 12:22:34 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-18 12:22:35 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-18 12:22:35 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-18 12:22:35 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-18 12:22:35 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-18 12:22:35 | INFO     |     - Métricas: {'mae': 0.002953, 'rmse': 0.003093, 'hit_rate': 60.0}
+2025-11-18 12:22:35 | INFO     |   -> Probando combinación 2/4: {'d': 1, 'p': 1, 'q': 2}
+2025-11-18 12:22:35 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-18 12:22:35 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-18 12:22:36 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-18 12:22:36 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-18 12:22:36 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-18 12:22:36 | INFO     |     - Métricas: {'mae': 0.003416, 'rmse': 0.003673, 'hit_rate': 20.0}
+2025-11-18 12:22:36 | INFO     |   -> Probando combinación 3/4: {'d': 1, 'p': 5, 'q': 0}
+2025-11-18 12:22:36 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-18 12:22:37 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-18 12:22:37 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-18 12:22:37 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-18 12:22:37 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-18 12:22:38 | INFO     |     - Métricas: {'mae': 0.003013, 'rmse': 0.003512, 'hit_rate': 60.0}
+2025-11-18 12:22:38 | INFO     |   -> Probando combinación 4/4: {'d': 1, 'p': 5, 'q': 2}
+2025-11-18 12:22:38 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-18 12:22:38 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-18 12:22:39 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-18 12:22:39 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-18 12:22:40 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-18 12:22:41 | INFO     |     - Métricas: {'mae': 0.003033, 'rmse': 0.003219, 'hit_rate': 20.0}
+2025-11-18 12:22:41 | INFO     |     💾 Reporte para ARIMA guardado en: outputs\backtest\report_ARIMA.csv
+2025-11-18 12:22:41 | INFO     | 
+🔥 Procesando modelo: PROPHET
+2025-11-18 12:22:41 | INFO     |   -> Probando combinación 1/1: {'changepoint_prior_scale': 0.1, 'daily_seasonality': False, 'seasonality_mode': 'multiplicative', 'seasonality_prior_scale': 10.0, 'use_lagged_regressors': True, 'weekly_seasonality': True, 'yearly_seasonality': False}
+2025-11-18 12:22:41 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-18 12:22:41 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-18 12:22:41 | DEBUG    | Adding TBB (C:\Users\USER\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\prophet\stan_model\cmdstan-2.33.1\stan\lib\stan_math\lib\tbb) to PATH
+2025-11-18 12:22:41 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpvmyej965\vv16dzw7.json
+2025-11-18 12:22:42 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpvmyej965\ys48kn49.json
+2025-11-18 12:22:42 | DEBUG    | idx 0
+2025-11-18 12:22:42 | DEBUG    | running CmdStan, num_threads: None
+2025-11-18 12:22:42 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=44972', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\vv16dzw7.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\ys48kn49.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\prophet_model82kdxno1\\prophet_model-20251118122242.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-18 12:22:42 | INFO     | Chain [1] start processing
+2025-11-18 12:22:44 | INFO     | Chain [1] done processing
+2025-11-18 12:22:44 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-18 12:22:44 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-18 12:22:44 | DEBUG    | TBB already found in load path
+2025-11-18 12:22:44 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpvmyej965\mf2zr8oy.json
+2025-11-18 12:22:45 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpvmyej965\8fu2q5ur.json
+2025-11-18 12:22:45 | DEBUG    | idx 0
+2025-11-18 12:22:45 | DEBUG    | running CmdStan, num_threads: None
+2025-11-18 12:22:45 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=94188', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\mf2zr8oy.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\8fu2q5ur.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\prophet_model7grqskx2\\prophet_model-20251118122245.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-18 12:22:45 | INFO     | Chain [1] start processing
+2025-11-18 12:22:47 | INFO     | Chain [1] done processing
+2025-11-18 12:22:47 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-18 12:22:47 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-18 12:22:47 | DEBUG    | TBB already found in load path
+2025-11-18 12:22:47 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpvmyej965\f_hhc1dw.json
+2025-11-18 12:22:48 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpvmyej965\b560alaz.json
+2025-11-18 12:22:48 | DEBUG    | idx 0
+2025-11-18 12:22:48 | DEBUG    | running CmdStan, num_threads: None
+2025-11-18 12:22:48 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=18828', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\f_hhc1dw.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\b560alaz.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\prophet_modeluaul9bao\\prophet_model-20251118122248.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-18 12:22:48 | INFO     | Chain [1] start processing
+2025-11-18 12:22:50 | INFO     | Chain [1] done processing
+2025-11-18 12:22:50 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-18 12:22:50 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-18 12:22:50 | DEBUG    | TBB already found in load path
+2025-11-18 12:22:50 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpvmyej965\odryk_0u.json
+2025-11-18 12:22:51 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpvmyej965\zokiul8w.json
+2025-11-18 12:22:51 | DEBUG    | idx 0
+2025-11-18 12:22:51 | DEBUG    | running CmdStan, num_threads: None
+2025-11-18 12:22:51 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=14170', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\odryk_0u.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\zokiul8w.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\prophet_modelxxub60ii\\prophet_model-20251118122251.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-18 12:22:51 | INFO     | Chain [1] start processing
+2025-11-18 12:22:53 | INFO     | Chain [1] done processing
+2025-11-18 12:22:53 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-18 12:22:53 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-18 12:22:53 | DEBUG    | TBB already found in load path
+2025-11-18 12:22:53 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpvmyej965\mm_0tgzk.json
+2025-11-18 12:22:54 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpvmyej965\x37_xgj8.json
+2025-11-18 12:22:54 | DEBUG    | idx 0
+2025-11-18 12:22:54 | DEBUG    | running CmdStan, num_threads: None
+2025-11-18 12:22:54 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=23128', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\mm_0tgzk.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\x37_xgj8.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\prophet_model_ypifzht\\prophet_model-20251118122254.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-18 12:22:54 | INFO     | Chain [1] start processing
+2025-11-18 12:22:56 | INFO     | Chain [1] done processing
+2025-11-18 12:22:56 | INFO     |     - Métricas: {'mae': 0.003209, 'rmse': 0.00416, 'hit_rate': 60.0}
+2025-11-18 12:22:56 | INFO     |     💾 Reporte para PROPHET guardado en: outputs\backtest\report_PROPHET.csv
+2025-11-18 12:22:56 | INFO     | 
+🔥 Procesando modelo: LSTM
+2025-11-18 12:22:56 | INFO     |   -> Probando combinación 1/1: {'architecture': 'stacked_lstm', 'batch_size': 64, 'dropout': 0.2, 'early_stopping_patience': 3, 'epochs': 10, 'learning_rate': 0.001, 'n_layers': 1, 'units': 32, 'window': 20}
+2025-11-18 12:22:56 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-18 12:22:58 | INFO     | Model: "sequential"
+2025-11-18 12:22:58 | INFO     | _________________________________________________________________
+2025-11-18 12:22:58 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-18 12:22:58 | INFO     | =================================================================
+2025-11-18 12:22:58 | INFO     |  lstm (LSTM)                 (None, 32)                8448      
+2025-11-18 12:22:58 | INFO     |                                                                  
+2025-11-18 12:22:58 | INFO     |  dropout (Dropout)           (None, 32)                0         
+2025-11-18 12:22:58 | INFO     |                                                                  
+2025-11-18 12:22:58 | INFO     |  dense (Dense)               (None, 1)                 33        
+2025-11-18 12:22:58 | INFO     |                                                                  
+2025-11-18 12:22:58 | INFO     | =================================================================
+2025-11-18 12:22:58 | INFO     | Total params: 8,481
+2025-11-18 12:22:58 | INFO     | Trainable params: 8,481
+2025-11-18 12:22:58 | INFO     | Non-trainable params: 0
+2025-11-18 12:22:58 | INFO     | _________________________________________________________________
+2025-11-18 12:23:06 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-18 12:23:07 | INFO     | Model: "sequential_1"
+2025-11-18 12:23:07 | INFO     | _________________________________________________________________
+2025-11-18 12:23:07 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-18 12:23:07 | INFO     | =================================================================
+2025-11-18 12:23:07 | INFO     |  lstm_1 (LSTM)               (None, 32)                8448      
+2025-11-18 12:23:07 | INFO     |                                                                  
+2025-11-18 12:23:07 | INFO     |  dropout_1 (Dropout)         (None, 32)                0         
+2025-11-18 12:23:07 | INFO     |                                                                  
+2025-11-18 12:23:07 | INFO     |  dense_1 (Dense)             (None, 1)                 33        
+2025-11-18 12:23:07 | INFO     |                                                                  
+2025-11-18 12:23:07 | INFO     | =================================================================
+2025-11-18 12:23:07 | INFO     | Total params: 8,481
+2025-11-18 12:23:07 | INFO     | Trainable params: 8,481
+2025-11-18 12:23:07 | INFO     | Non-trainable params: 0
+2025-11-18 12:23:07 | INFO     | _________________________________________________________________
+2025-11-18 12:23:13 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-18 12:23:13 | INFO     | Model: "sequential_2"
+2025-11-18 12:23:13 | INFO     | _________________________________________________________________
+2025-11-18 12:23:13 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-18 12:23:13 | INFO     | =================================================================
+2025-11-18 12:23:13 | INFO     |  lstm_2 (LSTM)               (None, 32)                8448      
+2025-11-18 12:23:13 | INFO     |                                                                  
+2025-11-18 12:23:13 | INFO     |  dropout_2 (Dropout)         (None, 32)                0         
+2025-11-18 12:23:13 | INFO     |                                                                  
+2025-11-18 12:23:13 | INFO     |  dense_2 (Dense)             (None, 1)                 33        
+2025-11-18 12:23:13 | INFO     |                                                                  
+2025-11-18 12:23:13 | INFO     | =================================================================
+2025-11-18 12:23:13 | INFO     | Total params: 8,481
+2025-11-18 12:23:13 | INFO     | Trainable params: 8,481
+2025-11-18 12:23:13 | INFO     | Non-trainable params: 0
+2025-11-18 12:23:13 | INFO     | _________________________________________________________________
+2025-11-18 12:23:19 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-18 12:23:19 | INFO     | Model: "sequential_3"
+2025-11-18 12:23:19 | INFO     | _________________________________________________________________
+2025-11-18 12:23:19 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-18 12:23:19 | INFO     | =================================================================
+2025-11-18 12:23:19 | INFO     |  lstm_3 (LSTM)               (None, 32)                8448      
+2025-11-18 12:23:19 | INFO     |                                                                  
+2025-11-18 12:23:19 | INFO     |  dropout_3 (Dropout)         (None, 32)                0         
+2025-11-18 12:23:19 | INFO     |                                                                  
+2025-11-18 12:23:19 | INFO     |  dense_3 (Dense)             (None, 1)                 33        
+2025-11-18 12:23:19 | INFO     |                                                                  
+2025-11-18 12:23:19 | INFO     | =================================================================
+2025-11-18 12:23:19 | INFO     | Total params: 8,481
+2025-11-18 12:23:19 | INFO     | Trainable params: 8,481
+2025-11-18 12:23:19 | INFO     | Non-trainable params: 0
+2025-11-18 12:23:19 | INFO     | _________________________________________________________________
+2025-11-18 12:23:24 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-18 12:23:25 | INFO     | Model: "sequential_4"
+2025-11-18 12:23:25 | INFO     | _________________________________________________________________
+2025-11-18 12:23:25 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-18 12:23:25 | INFO     | =================================================================
+2025-11-18 12:23:25 | INFO     |  lstm_4 (LSTM)               (None, 32)                8448      
+2025-11-18 12:23:25 | INFO     |                                                                  
+2025-11-18 12:23:25 | INFO     |  dropout_4 (Dropout)         (None, 32)                0         
+2025-11-18 12:23:25 | INFO     |                                                                  
+2025-11-18 12:23:25 | INFO     |  dense_4 (Dense)             (None, 1)                 33        
+2025-11-18 12:23:25 | INFO     |                                                                  
+2025-11-18 12:23:25 | INFO     | =================================================================
+2025-11-18 12:23:25 | INFO     | Total params: 8,481
+2025-11-18 12:23:25 | INFO     | Trainable params: 8,481
+2025-11-18 12:23:25 | INFO     | Non-trainable params: 0
+2025-11-18 12:23:25 | INFO     | _________________________________________________________________
+2025-11-18 12:23:30 | WARNING  | 5 out of the last 5 calls to <function Model.make_predict_function.<locals>.predict_function at 0x000001CE6EA06F20> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+2025-11-18 12:23:30 | INFO     |     - Métricas: {'mae': 0.003148, 'rmse': 0.003717, 'hit_rate': 60.0}
+2025-11-18 12:23:30 | INFO     |     💾 Reporte para LSTM guardado en: outputs\backtest\report_LSTM.csv
+2025-11-18 12:23:30 | INFO     | 
+📄 Resumen consolidado de mejores ejecuciones guardado en: outputs\backtest\summary_best_runs.csv
+2025-11-18 12:23:30 | INFO     | 📊 Resumen consolidado guardado también en Excel: outputs\backtest\summary_best_runs.xlsx
+2025-11-18 12:23:30 | INFO     | 
+============================================================
+2025-11-18 12:23:30 | INFO     | 🏆 ENCONTRANDO MEJORES HIPERPARÁMETROS
+2025-11-18 12:23:30 | INFO     | ============================================================
+2025-11-18 12:23:30 | INFO     |   -> Mejor para ARIMA: RMSE=0.003093 con params={'d': 1.0, 'p': 1.0, 'q': 0.0}
+2025-11-18 12:23:30 | INFO     |   -> Mejor para PROPHET: RMSE=0.004160 con params={'changepoint_prior_scale': 0.1, 'daily_seasonality': False, 'seasonality_mode': 'multiplicative', 'seasonality_prior_scale': 10.0, 'use_lagged_regressors': True, 'weekly_seasonality': True, 'yearly_seasonality': False}
+2025-11-18 12:23:30 | INFO     |   -> Mejor para LSTM: RMSE=0.003717 con params={'architecture': 'stacked_lstm', 'batch_size': 64.0, 'dropout': 0.2, 'early_stopping_patience': 3.0, 'epochs': 10.0, 'learning_rate': 0.001, 'n_layers': 1.0, 'units': 32.0, 'window': 20.0}
+2025-11-18 12:23:30 | INFO     | 
+💾 Configuración optimizada guardada en: config\config_optimizado.yaml
+2025-11-18 12:23:30 | INFO     | 
+🧠 Reentrenando y guardando modelos óptimos...
+2025-11-18 12:23:30 | INFO     |     -> Entrenando ARIMA final con params={'d': 1.0, 'p': 1.0, 'q': 0.0} sobre 1499 observaciones...
+2025-11-18 12:23:31 | INFO     |     -> Modelo ARIMA guardado en: outputs\models\arima_best.pkl
+2025-11-18 12:23:31 | INFO     |     ✅ Modelo ARIMA entrenado y guardado en carpeta: outputs\models (nombre base: arima_best)
+2025-11-18 12:23:31 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-18 12:23:31 | DEBUG    | TBB already found in load path
+2025-11-18 12:23:31 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpvmyej965\4hsvem8n.json
+2025-11-18 12:23:32 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmpvmyej965\oorpgju9.json
+2025-11-18 12:23:32 | DEBUG    | idx 0
+2025-11-18 12:23:32 | DEBUG    | running CmdStan, num_threads: None
+2025-11-18 12:23:32 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=35590', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\4hsvem8n.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\oorpgju9.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmpvmyej965\\prophet_model052t0o2p\\prophet_model-20251118122332.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-18 12:23:32 | INFO     | Chain [1] start processing
+2025-11-18 12:23:33 | INFO     | Chain [1] done processing
+2025-11-18 12:23:34 | INFO     |     ✅ Modelo Prophet guardado en: outputs\models\prophet_best.pkl
+2025-11-18 12:23:34 | INFO     |     ✅ Modelo PROPHET entrenado y guardado en carpeta: outputs\models (nombre base: prophet_best)
+2025-11-18 12:23:34 | INFO     |     -> Entrenando LSTM final con params={'architecture': 'stacked_lstm', 'batch_size': 64.0, 'dropout': 0.2, 'early_stopping_patience': 3.0, 'epochs': 10.0, 'learning_rate': 0.001, 'n_layers': 1.0, 'units': 32.0, 'window': 20.0} sobre 1499 observaciones...
+2025-11-18 12:23:35 | INFO     | Model: "sequential_5"
+2025-11-18 12:23:35 | INFO     | _________________________________________________________________
+2025-11-18 12:23:35 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-18 12:23:35 | INFO     | =================================================================
+2025-11-18 12:23:35 | INFO     |  lstm_5 (LSTM)               (None, 32)                8448      
+2025-11-18 12:23:35 | INFO     |                                                                  
+2025-11-18 12:23:35 | INFO     |  dropout_5 (Dropout)         (None, 32)                0         
+2025-11-18 12:23:35 | INFO     |                                                                  
+2025-11-18 12:23:35 | INFO     |  dense_5 (Dense)             (None, 1)                 33        
+2025-11-18 12:23:35 | INFO     |                                                                  
+2025-11-18 12:23:35 | INFO     | =================================================================
+2025-11-18 12:23:35 | INFO     | Total params: 8,481
+2025-11-18 12:23:35 | INFO     | Trainable params: 8,481
+2025-11-18 12:23:35 | INFO     | Non-trainable params: 0
+2025-11-18 12:23:35 | INFO     | _________________________________________________________________
+2025-11-18 12:23:40 | WARNING  | 6 out of the last 6 calls to <function Model.make_predict_function.<locals>.predict_function at 0x000001CE6EA06480> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+2025-11-18 12:23:40 | INFO     | [LSTM] Modelo guardado en: outputs\models\lstm_best.keras
+2025-11-18 12:23:40 | INFO     | [LSTM] Scalers guardados en: outputs\models\lstm_best.scalers.pkl
+2025-11-18 12:23:40 | INFO     |     -> Modelo LSTM final guardado en: outputs\models\lstm_best.keras
+2025-11-18 12:23:40 | INFO     |     ✅ Modelo LSTM entrenado y guardado en carpeta: outputs\models (nombre base: lstm_best)
+2025-11-18 12:23:40 | INFO     | 
+✅ Proceso de optimización y guardado de modelos completado.
+2025-11-18 12:23:40 | INFO     | 
+✅ MODO BACKTEST COMPLETADO
+2025-11-18 12:29:16 | INFO     | ============================================================
+2025-11-18 12:29:16 | INFO     | TRADING PIPELINE INICIADO
+2025-11-18 12:29:16 | INFO     | ============================================================
+2025-11-18 12:29:16 | INFO     | 📁 Directorios de trabajo configurados
+2025-11-18 12:29:16 | INFO     | 🚀 Ejecutando modo: BACKTEST
+2025-11-18 12:29:16 | INFO     | 
+============================================================
+2025-11-18 12:29:16 | INFO     | MODO: BACKTESTING
+2025-11-18 12:29:16 | INFO     | ============================================================
+
+2025-11-18 12:29:16 | INFO     | PASO 1: CARGANDO DATOS
+2025-11-18 12:29:16 | INFO     | ------------------------------------------------------------
+2025-11-18 12:29:16 | INFO     |   -> Símbolo 'EURUSD' cargado desde config/config.yaml
+2025-11-18 12:29:16 | INFO     |   -> Timeframe 'D1' cargado desde config/config.yaml
+2025-11-18 12:29:16 | INFO     | ✓ Datos cargados: 1500 filas, 6 columnas.
+2025-11-18 12:29:16 | INFO     | PASO 2: LIMPIANDO DATOS
+2025-11-18 12:29:16 | INFO     | ------------------------------------------------------------
+2025-11-18 12:29:16 | INFO     | ✓ Datos limpios: 1500 filas restantes.
+2025-11-18 12:29:16 | INFO     | PASO 3: GENERANDO FEATURES
+2025-11-18 12:29:16 | INFO     | ------------------------------------------------------------
+2025-11-18 12:29:16 | INFO     |   -> Retornos agregados para períodos: [1, 5, 10]
+2025-11-18 12:29:16 | INFO     |   -> Indicadores técnicos agregados.
+2025-11-18 12:29:16 | INFO     |   -> Lags agregados para la columna: 'Close'
+2025-11-18 12:29:16 | INFO     |   -> Lags agregados para la columna: 'Volume'
+2025-11-18 12:29:16 | INFO     |   -> Conteos de valores NaN generados por las features:
+2025-11-18 12:29:16 | INFO     | ✓ Features generadas. Total columnas: 34.
+2025-11-18 12:29:16 | INFO     | 튜 PASO 4: INICIANDO BÚSQUEDA DE HIPERPARÁMETROS
+2025-11-18 12:29:16 | INFO     | ------------------------------------------------------------
+2025-11-18 12:29:16 | INFO     | 
+🔥 Procesando modelo: RandomWalk
+2025-11-18 12:29:16 | INFO     |   -> Probando combinación 1/1: {}
+2025-11-18 12:29:16 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-18 12:29:16 | INFO     | RandomWalkModel: Prediciendo un retorno de 0 como línea base.
+2025-11-18 12:29:16 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-18 12:29:16 | INFO     | RandomWalkModel: Prediciendo un retorno de 0 como línea base.
+2025-11-18 12:29:16 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-18 12:29:16 | INFO     | RandomWalkModel: Prediciendo un retorno de 0 como línea base.
+2025-11-18 12:29:16 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-18 12:29:16 | INFO     | RandomWalkModel: Prediciendo un retorno de 0 como línea base.
+2025-11-18 12:29:16 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-18 12:29:16 | INFO     | RandomWalkModel: Prediciendo un retorno de 0 como línea base.
+2025-11-18 12:29:16 | INFO     |     - Métricas: {'rmse': 0.003257, 'mae': 0.002872, 'hit_rate': 0.0, 'dm_stat': nan, 'dm_pvalue': nan, 'sharpe': 0.0, 'sortino': 0.0, 'max_drawdown': 0.0, 'profit_factor': 0.0, 'win_rate': 0.0, 'payoff_ratio': 0.0}
+2025-11-18 12:29:16 | INFO     |     💾 Reporte para RandomWalk guardado en: outputs\backtest\report_RandomWalk.csv
+2025-11-18 12:29:16 | INFO     | 
+🔥 Procesando modelo: ARIMA
+2025-11-18 12:29:16 | INFO     |   -> Probando combinación 1/4: {'d': 1, 'p': 1, 'q': 0}
+2025-11-18 12:29:16 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-18 12:29:16 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-18 12:29:16 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-18 12:29:17 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-18 12:29:17 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-18 12:29:17 | INFO     |     - Métricas: {'rmse': 0.003093, 'mae': 0.002953, 'hit_rate': 60.0, 'dm_stat': -0.194129, 'dm_pvalue': 0.846075, 'sharpe': 9.9485, 'sortino': 150.722054, 'max_drawdown': -0.002507, 'profit_factor': 4.727513, 'win_rate': 60.0, 'payoff_ratio': 3.151675}
+2025-11-18 12:29:17 | INFO     |   -> Probando combinación 2/4: {'d': 1, 'p': 1, 'q': 2}
+2025-11-18 12:29:17 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-18 12:29:17 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-18 12:29:17 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-18 12:29:18 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-18 12:29:18 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-18 12:29:18 | INFO     |     - Métricas: {'rmse': 0.003673, 'mae': 0.003416, 'hit_rate': 20.0, 'dm_stat': 1.36176, 'dm_pvalue': 0.173274, 'sharpe': -3.240908, 'sortino': -9.939488, 'max_drawdown': -0.008992, 'profit_factor': 0.596953, 'win_rate': 20.0, 'payoff_ratio': 2.387813}
+2025-11-18 12:29:18 | INFO     |   -> Probando combinación 3/4: {'d': 1, 'p': 5, 'q': 0}
+2025-11-18 12:29:18 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-18 12:29:18 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-18 12:29:19 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-18 12:29:19 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-18 12:29:19 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-18 12:29:19 | INFO     |     - Métricas: {'rmse': 0.003512, 'mae': 0.003013, 'hit_rate': 60.0, 'dm_stat': 0.532805, 'dm_pvalue': 0.594169, 'sharpe': 4.439621, 'sortino': 11.110327, 'max_drawdown': -0.003636, 'profit_factor': 2.023277, 'win_rate': 60.0, 'payoff_ratio': 1.348852}
+2025-11-18 12:29:19 | INFO     |   -> Probando combinación 4/4: {'d': 1, 'p': 5, 'q': 2}
+2025-11-18 12:29:19 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-18 12:29:19 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-18 12:29:20 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-18 12:29:20 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-18 12:29:21 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-18 12:29:22 | INFO     |     - Métricas: {'rmse': 0.003219, 'mae': 0.003033, 'hit_rate': 20.0, 'dm_stat': -0.059121, 'dm_pvalue': 0.952855, 'sharpe': -3.240908, 'sortino': -9.939488, 'max_drawdown': -0.008992, 'profit_factor': 0.596953, 'win_rate': 20.0, 'payoff_ratio': 2.387813}
+2025-11-18 12:29:22 | INFO     |     💾 Reporte para ARIMA guardado en: outputs\backtest\report_ARIMA.csv
+2025-11-18 12:29:22 | INFO     | 
+🔥 Procesando modelo: PROPHET
+2025-11-18 12:29:22 | INFO     |   -> Probando combinación 1/1: {'changepoint_prior_scale': 0.1, 'daily_seasonality': False, 'seasonality_mode': 'multiplicative', 'seasonality_prior_scale': 10.0, 'use_lagged_regressors': True, 'weekly_seasonality': True, 'yearly_seasonality': False}
+2025-11-18 12:29:22 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-18 12:29:22 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-18 12:29:22 | DEBUG    | Adding TBB (C:\Users\USER\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\prophet\stan_model\cmdstan-2.33.1\stan\lib\stan_math\lib\tbb) to PATH
+2025-11-18 12:29:22 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp3q6c6jez\iz84cv98.json
+2025-11-18 12:29:22 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp3q6c6jez\dw_c93y4.json
+2025-11-18 12:29:22 | DEBUG    | idx 0
+2025-11-18 12:29:22 | DEBUG    | running CmdStan, num_threads: None
+2025-11-18 12:29:22 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=75169', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\iz84cv98.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\dw_c93y4.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\prophet_modelutjyi2td\\prophet_model-20251118122922.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-18 12:29:22 | INFO     | Chain [1] start processing
+2025-11-18 12:29:23 | INFO     | Chain [1] done processing
+2025-11-18 12:29:24 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-18 12:29:24 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-18 12:29:24 | DEBUG    | TBB already found in load path
+2025-11-18 12:29:24 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp3q6c6jez\lvtj_ocs.json
+2025-11-18 12:29:25 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp3q6c6jez\munce3yn.json
+2025-11-18 12:29:25 | DEBUG    | idx 0
+2025-11-18 12:29:25 | DEBUG    | running CmdStan, num_threads: None
+2025-11-18 12:29:25 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=68304', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\lvtj_ocs.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\munce3yn.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\prophet_modelju5iy6xx\\prophet_model-20251118122925.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-18 12:29:25 | INFO     | Chain [1] start processing
+2025-11-18 12:29:26 | INFO     | Chain [1] done processing
+2025-11-18 12:29:26 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-18 12:29:26 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-18 12:29:26 | DEBUG    | TBB already found in load path
+2025-11-18 12:29:26 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp3q6c6jez\41rh3ekx.json
+2025-11-18 12:29:27 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp3q6c6jez\17agmxpu.json
+2025-11-18 12:29:27 | DEBUG    | idx 0
+2025-11-18 12:29:27 | DEBUG    | running CmdStan, num_threads: None
+2025-11-18 12:29:27 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=55611', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\41rh3ekx.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\17agmxpu.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\prophet_modelf1uiz5s8\\prophet_model-20251118122927.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-18 12:29:27 | INFO     | Chain [1] start processing
+2025-11-18 12:29:28 | INFO     | Chain [1] done processing
+2025-11-18 12:29:29 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-18 12:29:29 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-18 12:29:29 | DEBUG    | TBB already found in load path
+2025-11-18 12:29:29 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp3q6c6jez\938aiwzc.json
+2025-11-18 12:29:30 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp3q6c6jez\qu1vkq74.json
+2025-11-18 12:29:30 | DEBUG    | idx 0
+2025-11-18 12:29:30 | DEBUG    | running CmdStan, num_threads: None
+2025-11-18 12:29:30 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=26220', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\938aiwzc.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\qu1vkq74.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\prophet_modelhof0u7qe\\prophet_model-20251118122930.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-18 12:29:30 | INFO     | Chain [1] start processing
+2025-11-18 12:29:31 | INFO     | Chain [1] done processing
+2025-11-18 12:29:32 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-18 12:29:32 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-18 12:29:32 | DEBUG    | TBB already found in load path
+2025-11-18 12:29:32 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp3q6c6jez\kvc0ajfy.json
+2025-11-18 12:29:33 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp3q6c6jez\y4vso41w.json
+2025-11-18 12:29:33 | DEBUG    | idx 0
+2025-11-18 12:29:33 | DEBUG    | running CmdStan, num_threads: None
+2025-11-18 12:29:33 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=49762', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\kvc0ajfy.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\y4vso41w.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\prophet_model782zjkbz\\prophet_model-20251118122933.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-18 12:29:33 | INFO     | Chain [1] start processing
+2025-11-18 12:29:35 | INFO     | Chain [1] done processing
+2025-11-18 12:29:35 | INFO     |     - Métricas: {'rmse': 0.00416, 'mae': 0.003209, 'hit_rate': 60.0, 'dm_stat': 0.407355, 'dm_pvalue': 0.683747, 'sharpe': 9.9485, 'sortino': 150.722054, 'max_drawdown': -0.002507, 'profit_factor': 4.727513, 'win_rate': 60.0, 'payoff_ratio': 3.151675}
+2025-11-18 12:29:35 | INFO     |     💾 Reporte para PROPHET guardado en: outputs\backtest\report_PROPHET.csv
+2025-11-18 12:29:35 | INFO     | 
+🔥 Procesando modelo: LSTM
+2025-11-18 12:29:35 | INFO     |   -> Probando combinación 1/1: {'architecture': 'stacked_lstm', 'batch_size': 64, 'dropout': 0.2, 'early_stopping_patience': 3, 'epochs': 10, 'learning_rate': 0.001, 'n_layers': 1, 'units': 32, 'window': 20}
+2025-11-18 12:29:35 | INFO     |     -> Ventana 0: X_train shape=(800, 33), y_train len=800, NaNs en X_train=0
+2025-11-18 12:29:36 | INFO     | Model: "sequential"
+2025-11-18 12:29:36 | INFO     | _________________________________________________________________
+2025-11-18 12:29:36 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-18 12:29:36 | INFO     | =================================================================
+2025-11-18 12:29:36 | INFO     |  lstm (LSTM)                 (None, 32)                8448      
+2025-11-18 12:29:36 | INFO     |                                                                  
+2025-11-18 12:29:36 | INFO     |  dropout (Dropout)           (None, 32)                0         
+2025-11-18 12:29:36 | INFO     |                                                                  
+2025-11-18 12:29:36 | INFO     |  dense (Dense)               (None, 1)                 33        
+2025-11-18 12:29:36 | INFO     |                                                                  
+2025-11-18 12:29:36 | INFO     | =================================================================
+2025-11-18 12:29:36 | INFO     | Total params: 8,481
+2025-11-18 12:29:36 | INFO     | Trainable params: 8,481
+2025-11-18 12:29:36 | INFO     | Non-trainable params: 0
+2025-11-18 12:29:36 | INFO     | _________________________________________________________________
+2025-11-18 12:29:41 | INFO     |     -> Ventana 1: X_train shape=(950, 33), y_train len=950, NaNs en X_train=0
+2025-11-18 12:29:41 | INFO     | Model: "sequential_1"
+2025-11-18 12:29:41 | INFO     | _________________________________________________________________
+2025-11-18 12:29:41 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-18 12:29:41 | INFO     | =================================================================
+2025-11-18 12:29:41 | INFO     |  lstm_1 (LSTM)               (None, 32)                8448      
+2025-11-18 12:29:41 | INFO     |                                                                  
+2025-11-18 12:29:41 | INFO     |  dropout_1 (Dropout)         (None, 32)                0         
+2025-11-18 12:29:41 | INFO     |                                                                  
+2025-11-18 12:29:41 | INFO     |  dense_1 (Dense)             (None, 1)                 33        
+2025-11-18 12:29:41 | INFO     |                                                                  
+2025-11-18 12:29:41 | INFO     | =================================================================
+2025-11-18 12:29:41 | INFO     | Total params: 8,481
+2025-11-18 12:29:41 | INFO     | Trainable params: 8,481
+2025-11-18 12:29:41 | INFO     | Non-trainable params: 0
+2025-11-18 12:29:41 | INFO     | _________________________________________________________________
+2025-11-18 12:29:45 | INFO     |     -> Ventana 2: X_train shape=(1100, 33), y_train len=1100, NaNs en X_train=0
+2025-11-18 12:29:46 | INFO     | Model: "sequential_2"
+2025-11-18 12:29:46 | INFO     | _________________________________________________________________
+2025-11-18 12:29:46 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-18 12:29:46 | INFO     | =================================================================
+2025-11-18 12:29:46 | INFO     |  lstm_2 (LSTM)               (None, 32)                8448      
+2025-11-18 12:29:46 | INFO     |                                                                  
+2025-11-18 12:29:46 | INFO     |  dropout_2 (Dropout)         (None, 32)                0         
+2025-11-18 12:29:46 | INFO     |                                                                  
+2025-11-18 12:29:46 | INFO     |  dense_2 (Dense)             (None, 1)                 33        
+2025-11-18 12:29:46 | INFO     |                                                                  
+2025-11-18 12:29:46 | INFO     | =================================================================
+2025-11-18 12:29:46 | INFO     | Total params: 8,481
+2025-11-18 12:29:46 | INFO     | Trainable params: 8,481
+2025-11-18 12:29:46 | INFO     | Non-trainable params: 0
+2025-11-18 12:29:46 | INFO     | _________________________________________________________________
+2025-11-18 12:29:52 | INFO     |     -> Ventana 3: X_train shape=(1250, 33), y_train len=1250, NaNs en X_train=0
+2025-11-18 12:29:53 | INFO     | Model: "sequential_3"
+2025-11-18 12:29:53 | INFO     | _________________________________________________________________
+2025-11-18 12:29:53 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-18 12:29:53 | INFO     | =================================================================
+2025-11-18 12:29:53 | INFO     |  lstm_3 (LSTM)               (None, 32)                8448      
+2025-11-18 12:29:53 | INFO     |                                                                  
+2025-11-18 12:29:53 | INFO     |  dropout_3 (Dropout)         (None, 32)                0         
+2025-11-18 12:29:53 | INFO     |                                                                  
+2025-11-18 12:29:53 | INFO     |  dense_3 (Dense)             (None, 1)                 33        
+2025-11-18 12:29:53 | INFO     |                                                                  
+2025-11-18 12:29:53 | INFO     | =================================================================
+2025-11-18 12:29:53 | INFO     | Total params: 8,481
+2025-11-18 12:29:53 | INFO     | Trainable params: 8,481
+2025-11-18 12:29:53 | INFO     | Non-trainable params: 0
+2025-11-18 12:29:53 | INFO     | _________________________________________________________________
+2025-11-18 12:30:00 | INFO     |     -> Ventana 4: X_train shape=(1400, 33), y_train len=1400, NaNs en X_train=0
+2025-11-18 12:30:01 | INFO     | Model: "sequential_4"
+2025-11-18 12:30:01 | INFO     | _________________________________________________________________
+2025-11-18 12:30:01 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-18 12:30:01 | INFO     | =================================================================
+2025-11-18 12:30:01 | INFO     |  lstm_4 (LSTM)               (None, 32)                8448      
+2025-11-18 12:30:01 | INFO     |                                                                  
+2025-11-18 12:30:01 | INFO     |  dropout_4 (Dropout)         (None, 32)                0         
+2025-11-18 12:30:01 | INFO     |                                                                  
+2025-11-18 12:30:01 | INFO     |  dense_4 (Dense)             (None, 1)                 33        
+2025-11-18 12:30:01 | INFO     |                                                                  
+2025-11-18 12:30:01 | INFO     | =================================================================
+2025-11-18 12:30:01 | INFO     | Total params: 8,481
+2025-11-18 12:30:01 | INFO     | Trainable params: 8,481
+2025-11-18 12:30:01 | INFO     | Non-trainable params: 0
+2025-11-18 12:30:01 | INFO     | _________________________________________________________________
+2025-11-18 12:30:08 | WARNING  | 5 out of the last 5 calls to <function Model.make_predict_function.<locals>.predict_function at 0x0000016AFF30AF20> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+2025-11-18 12:30:08 | INFO     |     - Métricas: {'rmse': 0.003586, 'mae': 0.003121, 'hit_rate': 60.0, 'dm_stat': 0.709069, 'dm_pvalue': 0.478282, 'sharpe': 1.216381, 'sortino': 27.244907, 'max_drawdown': -0.003978, 'profit_factor': 1.214366, 'win_rate': 60.0, 'payoff_ratio': 0.809577}
+2025-11-18 12:30:08 | INFO     |     💾 Reporte para LSTM guardado en: outputs\backtest\report_LSTM.csv
+2025-11-18 12:30:08 | INFO     | 
+📄 Resumen consolidado de mejores ejecuciones guardado en: outputs\backtest\summary_best_runs.csv
+2025-11-18 12:30:09 | INFO     | 📊 Resumen consolidado guardado también en Excel: outputs\backtest\summary_best_runs.xlsx
+2025-11-18 12:30:09 | INFO     | 
+============================================================
+2025-11-18 12:30:09 | INFO     | 🏆 ENCONTRANDO MEJORES HIPERPARÁMETROS
+2025-11-18 12:30:09 | INFO     | ============================================================
+2025-11-18 12:30:09 | INFO     |   -> Mejor para RandomWalk: RMSE=0.003257 con params={}
+2025-11-18 12:30:09 | INFO     |   -> Mejor para ARIMA: RMSE=0.003093 con params={'d': 1.0, 'p': 1.0, 'q': 0.0}
+2025-11-18 12:30:09 | INFO     |   -> Mejor para PROPHET: RMSE=0.004160 con params={'changepoint_prior_scale': 0.1, 'daily_seasonality': False, 'seasonality_mode': 'multiplicative', 'seasonality_prior_scale': 10.0, 'use_lagged_regressors': True, 'weekly_seasonality': True, 'yearly_seasonality': False}
+2025-11-18 12:30:09 | INFO     |   -> Mejor para LSTM: RMSE=0.003586 con params={'architecture': 'stacked_lstm', 'batch_size': 64.0, 'dropout': 0.2, 'early_stopping_patience': 3.0, 'epochs': 10.0, 'learning_rate': 0.001, 'n_layers': 1.0, 'units': 32.0, 'window': 20.0}
+2025-11-18 12:30:09 | INFO     | 
+💾 Configuración optimizada guardada en: config\config_optimizado.yaml
+2025-11-18 12:30:09 | INFO     | 
+🧠 Reentrenando y guardando modelos óptimos...
+2025-11-18 12:30:09 | WARNING  |     ⚠️ El modelo RandomWalk no implementa train_and_save(...). Se omite el guardado en disco.
+2025-11-18 12:30:09 | INFO     |     -> Entrenando ARIMA final con params={'d': 1.0, 'p': 1.0, 'q': 0.0} sobre 1499 observaciones...
+2025-11-18 12:30:09 | INFO     |     -> Modelo ARIMA guardado en: outputs\models\arima_best.pkl
+2025-11-18 12:30:09 | INFO     |     ✅ Modelo ARIMA entrenado y guardado en carpeta: outputs\models (nombre base: arima_best)
+2025-11-18 12:30:09 | DEBUG    | cmd: where.exe tbb.dll
+cwd: None
+2025-11-18 12:30:09 | DEBUG    | TBB already found in load path
+2025-11-18 12:30:09 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp3q6c6jez\n2cyk0ke.json
+2025-11-18 12:30:11 | DEBUG    | input tempfile: C:\Users\USER\AppData\Local\Temp\tmp3q6c6jez\cjstjmcr.json
+2025-11-18 12:30:11 | DEBUG    | idx 0
+2025-11-18 12:30:11 | DEBUG    | running CmdStan, num_threads: None
+2025-11-18 12:30:11 | DEBUG    | CmdStan args: ['C:\\Users\\USER\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\prophet\\stan_model\\prophet_model.bin', 'random', 'seed=38367', 'data', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\n2cyk0ke.json', 'init=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\cjstjmcr.json', 'output', 'file=C:\\Users\\USER\\AppData\\Local\\Temp\\tmp3q6c6jez\\prophet_modelgxw7ivow\\prophet_model-20251118123011.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-11-18 12:30:11 | INFO     | Chain [1] start processing
+2025-11-18 12:30:13 | INFO     | Chain [1] done processing
+2025-11-18 12:30:14 | INFO     |     ✅ Modelo Prophet guardado en: outputs\models\prophet_best.pkl
+2025-11-18 12:30:14 | INFO     |     ✅ Modelo PROPHET entrenado y guardado en carpeta: outputs\models (nombre base: prophet_best)
+2025-11-18 12:30:14 | INFO     |     -> Entrenando LSTM final con params={'architecture': 'stacked_lstm', 'batch_size': 64.0, 'dropout': 0.2, 'early_stopping_patience': 3.0, 'epochs': 10.0, 'learning_rate': 0.001, 'n_layers': 1.0, 'units': 32.0, 'window': 20.0} sobre 1499 observaciones...
+2025-11-18 12:30:14 | INFO     | Model: "sequential_5"
+2025-11-18 12:30:14 | INFO     | _________________________________________________________________
+2025-11-18 12:30:14 | INFO     |  Layer (type)                Output Shape              Param #   
+2025-11-18 12:30:14 | INFO     | =================================================================
+2025-11-18 12:30:14 | INFO     |  lstm_5 (LSTM)               (None, 32)                8448      
+2025-11-18 12:30:14 | INFO     |                                                                  
+2025-11-18 12:30:14 | INFO     |  dropout_5 (Dropout)         (None, 32)                0         
+2025-11-18 12:30:14 | INFO     |                                                                  
+2025-11-18 12:30:14 | INFO     |  dense_5 (Dense)             (None, 1)                 33        
+2025-11-18 12:30:14 | INFO     |                                                                  
+2025-11-18 12:30:14 | INFO     | =================================================================
+2025-11-18 12:30:14 | INFO     | Total params: 8,481
+2025-11-18 12:30:14 | INFO     | Trainable params: 8,481
+2025-11-18 12:30:14 | INFO     | Non-trainable params: 0
+2025-11-18 12:30:14 | INFO     | _________________________________________________________________
+2025-11-18 12:30:19 | WARNING  | 6 out of the last 6 calls to <function Model.make_predict_function.<locals>.predict_function at 0x0000016AFF30A840> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+2025-11-18 12:30:19 | INFO     | [LSTM] Modelo guardado en: outputs\models\lstm_best.keras
+2025-11-18 12:30:19 | INFO     | [LSTM] Scalers guardados en: outputs\models\lstm_best.scalers.pkl
+2025-11-18 12:30:19 | INFO     |     -> Modelo LSTM final guardado en: outputs\models\lstm_best.keras
+2025-11-18 12:30:19 | INFO     |     ✅ Modelo LSTM entrenado y guardado en carpeta: outputs\models (nombre base: lstm_best)
+2025-11-18 12:30:19 | INFO     | 
+✅ Proceso de optimización y guardado de modelos completado.
+2025-11-18 12:30:19 | INFO     | 
+✅ MODO BACKTEST COMPLETADO

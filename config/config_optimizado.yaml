@@ -73,12 +73,25 @@ features:
     - 5
     - 10
 models:
+- name: RandomWalk
+  enabled: true
+  params: {}
 - name: ARIMA
   enabled: true
   params:
     d: 1.0
     p: 1.0
-    q: 2.0
+    q: 0.0
+- name: PROPHET
+  enabled: true
+  params:
+    changepoint_prior_scale: 0.1
+    daily_seasonality: false
+    seasonality_mode: multiplicative
+    seasonality_prior_scale: 10.0
+    use_lagged_regressors: true
+    weekly_seasonality: true
+    yearly_seasonality: false
 - name: LSTM
   enabled: true
   params:
@@ -91,28 +104,24 @@ models:
     n_layers: 1.0
     units: 32.0
     window: 20.0
-- name: PROPHET
-  enabled: true
-  params:
-    changepoint_prior_scale: 0.1
-    daily_seasonality: false
-    seasonality_mode: multiplicative
-    seasonality_prior_scale: 10.0
-    use_lagged_regressors: true
-    weekly_seasonality: true
-    yearly_seasonality: false
 backtest:
   enabled: true
   initial_train: 800
   step: 150
   horizon: 1
   target: Return_1
-  metrics:
-  - mae
-  - rmse
-  - hit_rate
-  threshold_pips: 12.0
-  pip_size: 0.0001
+metrics:
+- mae
+- rmse
+- hit_rate
+- sharpe
+- sortino
+- max_drawdown
+- profit_factor
+- win_rate
+- payoff_ratio
+threshold_pips: 12.0
+pip_size: 0.0001
 output:
   dir: outputs
   save_predictions: true
@@ -132,3 +141,8 @@ execution:
   mode: backtest
   parallel: false
   n_jobs: -1
+model_selection:
+  primary_metric: hit_rate
+  primary_greater_is_better: true
+  secondary_metric: rmse
+  secondary_greater_is_better: false

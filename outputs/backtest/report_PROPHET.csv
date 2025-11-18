@@ -1,2 +1,2 @@
-model,changepoint_prior_scale,daily_seasonality,seasonality_mode,seasonality_prior_scale,use_lagged_regressors,weekly_seasonality,yearly_seasonality,rmse,mae,hit_rate,accuracy,dm_stat,dm_pvalue
-PROPHET,0.1,False,multiplicative,10.0,True,True,False,0.002833,0.002294,60.0,60.0,,
+model,changepoint_prior_scale,daily_seasonality,seasonality_mode,seasonality_prior_scale,use_lagged_regressors,weekly_seasonality,yearly_seasonality,rmse,mae,hit_rate,dm_stat,dm_pvalue,sharpe,sortino,max_drawdown,profit_factor,win_rate,payoff_ratio
+PROPHET,0.1,False,multiplicative,10.0,True,True,False,0.00416,0.003209,60.0,0.407355,0.683747,9.9485,150.722054,-0.002507,4.727513,60.0,3.151675

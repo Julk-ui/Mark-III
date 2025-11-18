@@ -576,12 +576,10 @@ class TradingPipeline:
     def _find_and_save_best_params(self, all_results: list[dict[str, Any]]) -> None:
         """
         A partir de todas las combinaciones evaluadas en el backtest:
-        - Identifica la mejor por modelo usando RMSE.
+        - Identifica la mejor por modelo usando las métricas de model_selection.
         - Construye un config_optimizado.yaml con esos mejores modelos.
         - (Opcional) Reentrena y guarda los modelos finales en outputs/models.
         """
-        import numpy as np  # por si no está importado arriba
-
         self.logger.info("\n" + "=" * 60)
         self.logger.info("🏆 ENCONTRANDO MEJORES HIPERPARÁMETROS")
         self.logger.info("=" * 60)
@@ -594,7 +592,20 @@ class TradingPipeline:
         df = pd.DataFrame(all_results)
 
         # Columnas de métricas que NO son hiperparámetros
-        metric_cols = ["rmse", "mae", "hit_rate", "accuracy", "dm_stat", "dm_pvalue"]
+        metric_cols = [
+            "rmse",
+            "mae",
+            "hit_rate",
+            "accuracy",
+            "dm_stat",
+            "dm_pvalue",
+            "sharpe",
+            "sortino",
+            "max_drawdown",
+            "profit_factor",
+            "win_rate",
+            "payoff_ratio",
+        ]
 
         best_models: list[dict[str, Any]] = []
 
@@ -614,30 +625,83 @@ class TradingPipeline:
                 return bool(v)
             return v
 
-        # 2. Por cada modelo (ARIMA, PROPHET, LSTM, etc.) encontrar la mejor fila
-        for model_name, model_df in df.groupby("model"):
-            if "rmse" not in model_df.columns:
-                self.logger.warning(f"  -> El modelo {model_name} no tiene columna 'rmse'; se omite.")
+        # 2. Configuración de cómo se escoge el "mejor" modelo
+        selection_cfg = self.config.get("model_selection", {})
+        primary_metric = selection_cfg.get("primary_metric", "rmse")
+        primary_greater_is_better = selection_cfg.get("primary_greater_is_better", False)
+        secondary_metric = selection_cfg.get("secondary_metric", None)
+        secondary_greater_is_better = selection_cfg.get("secondary_greater_is_better", True)
+
+        # 3. Por cada modelo (ARIMA, PROPHET, LSTM, RandomWalk, etc.) encontrar la mejor fila
+        for model_name in df["model"].unique():
+            model_df = df[df["model"] == model_name].copy()
+
+            if model_df.empty:
                 continue
 
-            # Índice del run con menor RMSE
-            idx_min = model_df["rmse"].idxmin()
-            best_run = model_df.loc[idx_min]
+            # Construir criterios de ordenamiento dinámicos
+            sort_by: list[str] = []
+            ascending: list[bool] = []
+
+            if primary_metric in model_df.columns:
+                sort_by.append(primary_metric)
+                ascending.append(not primary_greater_is_better)
+
+            if secondary_metric and secondary_metric in model_df.columns:
+                sort_by.append(secondary_metric)
+                ascending.append(not secondary_greater_is_better)
+
+            # Fallback si no se encuentra nada: usar rmse si existe
+            if not sort_by:
+                if "rmse" in model_df.columns:
+                    sort_by = ["rmse"]
+                    ascending = [True]  # menor rmse mejor
+                else:
+                    # último fallback: no sabemos qué métrica usar,
+                    # nos quedamos con la primera fila tal cual
+                    self.logger.warning(
+                        f"  -> Modelo {model_name} sin métricas reconocidas para ordenar; "
+                        "se toma la primera fila."
+                    )
+                    best_run = model_df.iloc[0]
+                    # Hiperparámetros = todas las columnas excepto métricas + 'model'
+                    param_cols = [c for c in model_df.columns if c not in metric_cols + ["model"]]
+                    raw_params = {k: best_run[k] for k in param_cols}
+                    clean_params = {
+                        k: to_native(v)
+                        for k, v in raw_params.items()
+                        if not is_nan(v)
+                    }
+                    best_models.append(
+                        {"name": model_name, "enabled": True, "params": clean_params}
+                    )
+                    continue
+
+            # Ordenar según las métricas seleccionadas
+            model_df = model_df.sort_values(by=sort_by, ascending=ascending)
+            best_run = model_df.iloc[0]
 
             # Hiperparámetros = todas las columnas excepto métricas + 'model'
             param_cols = [c for c in model_df.columns if c not in metric_cols + ["model"]]
             raw_params = {k: best_run[k] for k in param_cols}
 
-            # Limpio tipos numpy y elimino NaN (params de otros modelos)
             clean_params = {
                 k: to_native(v)
                 for k, v in raw_params.items()
                 if not is_nan(v)
             }
 
-            best_rmse = float(best_run["rmse"])
-
-            self.logger.info(f"  -> Mejor para {model_name}: RMSE={best_rmse:.6f} con params={clean_params}")
+            # Para el log, si existe rmse lo mostramos
+            best_rmse = best_run["rmse"] if "rmse" in best_run.index else None
+            if best_rmse is not None:
+                self.logger.info(
+                    f"  -> Mejor para {model_name}: RMSE={float(best_rmse):.6f} "
+                    f"con params={clean_params}"
+                )
+            else:
+                self.logger.info(
+                    f"  -> Mejor para {model_name} (sin RMSE) con params={clean_params}"
+                )
 
             best_models.append(
                 {
@@ -651,12 +715,11 @@ class TradingPipeline:
             self.logger.warning("No se encontró ningún mejor modelo para guardar en config_optimizado.")
             return
 
-        # 3. Construir config optimizado: copiamos config actual y reemplazamos sólo la sección de modelos
-        optimized_config = dict(self.config)  # copia superficial de dict
+        # 4. Construir config optimizado: copiamos config actual y reemplazamos sólo la sección de modelos
+        optimized_config = dict(self.config)
         optimized_config["models"] = best_models
 
-        # 4. Guardar el nuevo archivo YAML en la misma carpeta del config original
-        base_config_path = Path(self.config_path)  # self.config_path es str, lo convertimos a Path
+        base_config_path = Path(self.config_path)
         optimized_config_path = base_config_path.parent / "config_optimizado.yaml"
 
         with open(optimized_config_path, "w", encoding="utf-8") as f:
@@ -664,7 +727,7 @@ class TradingPipeline:
 
         self.logger.info(f"\n💾 Configuración optimizada guardada en: {optimized_config_path}")
 
-        # 5. (Opcional, pero recomendado) Reentrenar y guardar modelos finales
+        # 5. Reentrenar y guardar modelos finales (si tenemos features del último backtest)
         if self._df_features_last_backtest is None:
             self.logger.warning(
                 "    -> self._df_features_last_backtest es None. "
@@ -691,18 +754,16 @@ class TradingPipeline:
         X_full = df_proc.drop(columns=[target_col])
         y_full = df_proc[target_col]
 
-        # Directorio donde se guardarán los modelos
         models_dir = Path("outputs") / "models"
         models_dir.mkdir(parents=True, exist_ok=True)
 
-        # Mapear nombres a clases de modelo
         model_class_map = {
             "RandomWalk": MomentumModel,
             "ARIMA": ArimaModel,
             "PROPHET": ProphetModel,
             "LSTM": LSTMModel,
         }
-        
+
         self.logger.info("\n🧠 Reentrenando y guardando modelos óptimos...")
 
         for m in best_models:
@@ -718,12 +779,11 @@ class TradingPipeline:
             model_name = f"{name.lower()}_best"
 
             try:
-                # 🔹 Contrato unificado para TODOS los modelos
                 model.train_and_save(
                     y_train=y_full,
                     X_train=X_full,
                     model_name=model_name,
-                    models_dir=models_dir,   # outputs/models
+                    models_dir=models_dir,
                 )
                 self.logger.info(
                     f"    ✅ Modelo {name} entrenado y guardado en carpeta: {models_dir} "
@@ -734,7 +794,10 @@ class TradingPipeline:
                     f"    ⚠️ El modelo {name} no implementa train_and_save(...). "
                     "Se omite el guardado en disco."
                 )
+
         self.logger.info("\n✅ Proceso de optimización y guardado de modelos completado.")
+
+    
     def _save_model_report(self, model_name: str, model_results: list[dict]) -> None:
         """Guarda el reporte detallado de un modelo en un archivo CSV."""
         if not model_results:
@@ -766,6 +829,13 @@ class TradingPipeline:
         best_runs = df_summary.loc[df_summary.groupby('model')['rmse'].idxmin()]
         best_runs.to_csv(summary_path, index=False)
         self.logger.info(f"\n📄 Resumen consolidado de mejores ejecuciones guardado en: {summary_path}")
+        
+        # OPCIONAL: Guardar también en Excel
+        output_formats = self.config.get("output", {}).get("formats", [])
+        if "excel" in output_formats:
+            excel_path = output_dir / "summary_best_runs.xlsx"
+            best_runs.to_excel(excel_path, index=False)
+            self.logger.info(f"📊 Resumen consolidado guardado también en Excel: {excel_path}")
 
     def _run_walk_forward_for_params(
         self,
@@ -854,13 +924,28 @@ class TradingPipeline:
             return None
 
     def _calculate_metrics(self, y_true: list, y_pred: list) -> dict:
-        """Calcula un conjunto de métricas de evaluación."""
+        """
+        Calcula un conjunto de métricas de evaluación.
+
+        - Calcula todas las métricas disponibles en utils.metrics.
+        - Filtra las que estén listadas en config['backtest']['metrics'].
+        """
         if not y_true or not y_pred:
             self.logger.warning("Listas de valores vacías para calcular métricas.")
             return {"rmse": np.nan, "mae": np.nan, "hit_rate": np.nan}
-            
-        metrics = calculate_all_metrics(y_true, y_pred)
-        return {k: round(v, 6) for k, v in metrics.items()}
+
+        all_metrics = calculate_all_metrics(y_true, y_pred)
+
+        # Lista de métricas a usar según la configuración
+        metrics_cfg = self.config.get("backtest", {}).get("metrics", [])
+        if metrics_cfg:
+            metrics = {k: all_metrics[k] for k in metrics_cfg if k in all_metrics}
+        else:
+            metrics = all_metrics
+
+        # Redondear para guardar en CSV
+        return {k: (round(v, 6) if isinstance(v, (int, float)) and not np.isnan(v) else v)
+                for k, v in metrics.items()}
 
     def _validate_model_on_test(self, model_name: str, params: dict, df_train: pd.DataFrame, y_test: pd.Series, X_test: pd.DataFrame):
         """Entrena un modelo con datos de train y lo valida contra test."""
@@ -1133,7 +1218,20 @@ class TradingPipeline:
         csv_path = output_dir / "production_signals.csv"
 
         if csv_path.exists():
-            df_rows.to_csv(csv_path, mode="a", header=False, index=False)
+            existing = pd.read_csv(csv_path)
+            # Construir el conjunto completo de columnas (viejas + nuevas)
+            all_cols = list(existing.columns)
+            for c in df_rows.columns:
+                if c not in all_cols:
+                    all_cols.append(c)
+            # Reindexar ambos dataframes al mismo orden de columnas
+            existing = existing.reindex(columns=all_cols)
+            df_rows = df_rows.reindex(columns=all_cols)
+
+            # Unir y reescribir el archivo completo (con header actualizado)
+            combined = pd.concat([existing, df_rows], ignore_index=True)
+            combined.to_csv(csv_path, index=False)
+            
         else:
             df_rows.to_csv(csv_path, index=False)
 

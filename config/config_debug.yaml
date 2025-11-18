@@ -86,7 +86,7 @@ features:
 # --- MODELOS ---
 models:
   - name: RandomWalk
-    enabled: false
+    enabled: true
     # Modelo base sin parámetros
 
   - name: ARIMA
@@ -137,15 +137,21 @@ backtest:
   horizon: 1                  # Horizonte de predicción
   target: "Return_1"          # Columna objetivo exacta (Return_1, Close, etc.)
   
-  # Métricas a calcular
-  metrics:
-    - mae
-    - rmse
-    - hit_rate # Renombrado de directional_accuracy para mayor claridad
+# Métricas a calcular (y a guardar en los CSV)
+metrics:
+  - mae
+  - rmse
+  - hit_rate
+  - sharpe
+  - sortino
+  - max_drawdown
+  - profit_factor
+  - win_rate
+  - payoff_ratio
   
   # Umbrales para señales
-  threshold_pips: 12.0
-  pip_size: 0.0001
+threshold_pips: 12.0
+pip_size: 0.0001
 
 # --- OUTPUT ---
 output:
@@ -180,3 +186,13 @@ validation:
   method: "time_series_split"  # time_series_split, expanding_window
   n_splits: 5
   test_size: 0.2
+
+# --- SELECCIÓN DEL MEJOR MODELO ---
+model_selection:
+  # 1) Métrica principal para ranking entre hiperparámetros
+  primary_metric: "hit_rate"
+  primary_greater_is_better: true   # mayor hit_rate es mejor
+
+  # 2) Métrica secundaria (para desempates)
+  secondary_metric: "rmse"
+  secondary_greater_is_better: false  # menor rmse es mejor

@@ -79,16 +79,16 @@ models:
 - name: ARIMA
   enabled: true
   params:
-    d: 1.0
-    p: 1.0
-    q: 0.0
+    d: 0.0
+    p: 2.0
+    q: 2.0
 - name: PROPHET
   enabled: true
   params:
     changepoint_prior_scale: 0.1
     daily_seasonality: false
     seasonality_mode: multiplicative
-    seasonality_prior_scale: 10.0
+    seasonality_prior_scale: 1.0
     use_lagged_regressors: true
     weekly_seasonality: true
     yearly_seasonality: false
@@ -96,20 +96,21 @@ models:
   enabled: true
   params:
     architecture: stacked_lstm
-    batch_size: 64.0
+    batch_size: 32.0
     dropout: 0.2
-    early_stopping_patience: 3.0
-    epochs: 10.0
+    early_stopping_patience: 10.0
+    epochs: 50.0
     learning_rate: 0.001
-    n_layers: 1.0
+    n_layers: 2.0
     units: 32.0
     window: 20.0
 backtest:
   enabled: true
   initial_train: 800
-  step: 150
+  step: 60
   horizon: 1
   target: Return_1
+target: Return_1
 metrics:
 - mae
 - rmse
@@ -120,8 +121,6 @@ metrics:
 - profit_factor
 - win_rate
 - payoff_ratio
-threshold_pips: 12.0
-pip_size: 0.0001
 output:
   dir: outputs
   save_predictions: true

@@ -1,2 +1,2 @@
 model,rmse,mae,hit_rate,dm_stat,dm_pvalue,sharpe,sortino,max_drawdown,profit_factor,win_rate,payoff_ratio
-RandomWalk,0.003257,0.002872,0.0,,,0.0,0.0,0.0,0.0,0.0,0.0
+RandomWalk,0.007679,0.005059,0.0,,,0.0,0.0,0.0,0.0,0.0,0.0

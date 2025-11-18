@@ -137,6 +137,9 @@ backtest:
   step: 60                    # Paso de rolling window (aumentado)
   horizon: 1                  # Horizonte de predicción
   target: "Return_1"          # Columna objetivo exacta (Return_1, Close, etc.)
+  # --- Umbral mínimo para considerar una señal en backtest ---
+  pip_size: 0.0001          # típico EURUSD
+  threshold_pips: 12.0      # mínimo de pips para que cuente como trade en métricas
   
 target: "Return_1"
 
@@ -164,6 +167,10 @@ output:
     - csv
     - excel
     - pdf
+
+trading:
+  # --- NUEVO: umbral mínimo de señal en producción ---
+  min_pips_signal: 20.0      # ej: abrir trade solo si la predicción supera 20 pips
 
 # --- LOGGING ---
 logging:

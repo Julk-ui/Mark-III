@@ -927,6 +927,48 @@ class TradingPipeline:
         """
         Calcula un conjunto de métricas de evaluación.
 
+        - Calcula todas las métricas disponibles en utils.metrics.calculate_all_metrics.
+        - Aplica un umbral de pips (backtest.threshold_pips) para las métricas de TRADING.
+        - Filtra las métricas a las listadas en config['backtest']['metrics'].
+        """
+        if not y_true or not y_pred:
+            self.logger.warning("Listas de valores vacías para calcular métricas.")
+            return {"rmse": np.nan, "mae": np.nan, "hit_rate": np.nan}
+
+        bt_cfg = self.config.get("backtest", {})
+
+        # Parámetros opcionales para métricas de trading
+        pip_size = float(bt_cfg.get("pip_size", 0.0001))
+        threshold_pips = float(bt_cfg.get("threshold_pips", 0.0))
+        risk_free = float(bt_cfg.get("risk_free", 0.0))  # anual
+        periods_per_year = int(bt_cfg.get("periods_per_year", 252))
+
+        all_metrics = calculate_all_metrics(
+            y_true,
+            y_pred,
+            benchmark_values=None,  # benchmark ingenuo (pred = 0) por defecto
+            risk_free=risk_free,
+            periods_per_year=periods_per_year,
+            pip_size=pip_size,
+            threshold_pips=threshold_pips,
+        )
+
+        # Lista de métricas a usar según la configuración
+        metrics_cfg = self.config.get("backtest", {}).get("metrics", [])
+        if metrics_cfg:
+            metrics = {k: all_metrics.get(k) for k in metrics_cfg if k in all_metrics}
+        else:
+            metrics = all_metrics
+
+        # Redondear para guardar en CSV
+        return {
+            k: (round(v, 6) if isinstance(v, (int, float)) and not np.isnan(v) else v)
+            for k, v in metrics.items()
+        }
+
+        """
+        Calcula un conjunto de métricas de evaluación.
+
         - Calcula todas las métricas disponibles en utils.metrics.
         - Filtra las que estén listadas en config['backtest']['metrics'].
         """
@@ -972,6 +1014,279 @@ class TradingPipeline:
 
 
     def _run_production_mode(self) -> None:
+        """
+        Modo Producción:
+        - Carga datos recientes desde MT5
+        - Genera features
+        - Carga desde disco los modelos ganadores según la config (config_optimizado.yaml)
+        - Genera una predicción de retorno por modelo
+        - Traduce cada predicción a señal BUY/SELL/HOLD (aplicando un umbral en pips)
+        - Calcula precio objetivo, delta de precio y pips
+        - Guarda todo en outputs/production/production_signals.csv
+        """
+        self.logger.info("\n" + "="*60)
+        self.logger.info("MODO: PRODUCCIÓN")
+        self.logger.info("="*60 + "\n")
+
+        # 1) Cargar / limpiar / generar features
+        self.logger.info("📥 Cargando datos para producción...")
+        df_raw = self._load_data()
+        df_clean = self._clean_data(df_raw)
+        df_features = self._generate_features(df_clean)
+
+        target_col = self.config.get("backtest", {}).get("target", "Return_1")
+
+        # Quitamos filas sin target ni features
+        feature_cols = [c for c in df_features.columns if c != target_col]
+        df_processed = df_features.dropna(subset=[target_col] + feature_cols)
+
+        if df_processed.empty:
+            self.logger.error("No hay datos suficientes después del procesamiento para producción.")
+            return
+
+        X_all = df_processed[feature_cols]
+
+        # 2) Leemos TODOS los modelos habilitados en la config
+        models_cfg = self.config.get("models", [])
+        enabled_models_cfg = [m for m in models_cfg if m.get("enabled", True)]
+
+        if not enabled_models_cfg:
+            self.logger.error(
+                "No hay modelos habilitados en la configuración. Revisa la sección 'models' del YAML."
+            )
+            return
+
+        # Determinar el modelo campeón global (usa la lógica existente)
+        best_model_config = self._get_best_model_from_config()
+        best_model_name = None
+        if best_model_config:
+            best_model_name = str(best_model_config.get("name", "")).upper()
+            self.logger.info(
+                f"🏆 Modelo campeón global según backtest / RMSE: {best_model_name}"
+            )
+        else:
+            self.logger.warning(
+                "No se pudo determinar un modelo campeón global con _get_best_model_from_config()."
+            )
+
+        # 3) Intentamos cargar las métricas del backtest (summary_best_runs.csv)
+        metrics_by_model: dict[str, dict[str, float]] = {}
+        backtest_dir = Path(self.config.get("output", {}).get("dir", "outputs")) / "backtest"
+        summary_path = backtest_dir / "summary_best_runs.csv"
+
+        if summary_path.exists():
+            try:
+                df_best = pd.read_csv(summary_path)
+                metric_cols = ["rmse", "mae", "hit_rate", "accuracy", "dm_stat", "dm_pvalue"]
+                for model_name in df_best["model"].unique():
+                    sub = df_best[df_best["model"] == model_name]
+                    # Tomamos la fila con menor RMSE
+                    idx_min = sub["rmse"].idxmin()
+                    row = sub.loc[idx_min]
+                    metrics_by_model[str(model_name).upper()] = {
+                        col: float(row[col]) if col in row and pd.notna(row[col]) else None
+                        for col in metric_cols
+                        if col in row
+                    }
+            except Exception as e:
+                self.logger.error(
+                    f"No se pudieron cargar métricas desde {summary_path}: {e}"
+                )
+        else:
+            self.logger.warning(
+                f"No se encontró {summary_path}; no se agregarán métricas de backtest al CSV de producción."
+            )
+
+        # 4) Mapa nombre -> clase de modelo
+        model_map = {
+            "ARIMA": ArimaModel,
+            "PROPHET": ProphetModel,
+            "LSTM": LSTMModel,
+            "RANDOMWALK": MomentumModel,
+        }
+
+        # Directorio donde están los modelos guardados
+        models_dir = Path(self.config.get("output", {}).get("dir", "outputs")) / "models"
+        models_dir.mkdir(parents=True, exist_ok=True)
+
+        # Datos comunes para todas las filas de salida
+        last_row = df_processed.iloc[-1]
+        price_now = last_row["Close"] if "Close" in last_row else np.nan
+
+        # tamaño de pip (puedes definirlo en config.data.pip_size)
+        pip_size = self.config.get("data", {}).get("pip_size", None)
+        if pip_size is None:
+            symbol = self.config.get("data", {}).get("symbol", "")
+            if len(symbol) == 6 and symbol.isalpha():
+                pip_size = 0.0001  # típico FX
+            else:
+                pip_size = 0.01    # por ejemplo índices/ETFs
+        pip_size = float(pip_size)
+
+        # --- NUEVO: umbral de pips para generar señal en producción ---
+        trading_cfg = self.config.get("trading", {})
+        min_pips_signal = float(
+            trading_cfg.get(
+                "min_pips_signal",
+                self.config.get("backtest", {}).get("threshold_pips", 0.0)
+            )
+        )
+
+        rows = []
+
+        self.logger.info("🔎 Generando señales de producción para TODOS los modelos habilitados...\n")
+
+        for m_cfg in enabled_models_cfg:
+            model_name = str(m_cfg.get("name", "UNKNOWN"))
+            params = m_cfg.get("params", {})
+            model_name_upper = model_name.upper()
+
+            self.logger.info(f"➡ Procesando modelo: {model_name} | params={params}")
+
+            model_class = model_map.get(model_name_upper)
+            if model_class is None:
+                self.logger.error(f"  ✗ No hay clase asociada al modelo '{model_name}'. Se omite.")
+                continue
+
+            model_instance = model_class(params=params, logger=self.logger)
+
+            # Convención: LSTM -> .keras, resto -> .pkl
+            file_prefix = f"{model_name.lower()}_best"
+            if model_name_upper == "LSTM":
+                model_path = models_dir / f"{file_prefix}.keras"
+            else:
+                model_path = models_dir / f"{file_prefix}.pkl"
+
+            self.logger.info(f"  💾 Intentando cargar el modelo desde: {model_path}")
+
+            if not hasattr(model_instance, "load_model") or not hasattr(model_instance, "predict_loaded"):
+                self.logger.error(
+                    f"  ✗ El modelo {model_name} no implementa 'load_model' o 'predict_loaded'. Se omite."
+                )
+                continue
+
+            if not model_path.exists():
+                self.logger.error(
+                    f"  ✗ El archivo de modelo {model_path} no existe. Se omite."
+                )
+                continue
+
+            # Cargar modelo
+            try:
+                model_instance.load_model(model_path)
+            except Exception as e:
+                self.logger.error(
+                    f"  ✗ No se pudo cargar el modelo {model_name} desde disco: {e}"
+                )
+                continue
+
+            # Predecir
+            try:
+                prediction = model_instance.predict_loaded(X_all)
+            except Exception as e:
+                self.logger.error(
+                    f"  ✗ Error al predecir con el modelo cargado {model_name}: {e}"
+                )
+                continue
+
+            if prediction is None or len(prediction) == 0:
+                self.logger.error(
+                    f"  ✗ El modelo {model_name} no devolvió ninguna predicción. Se omite."
+                )
+                continue
+
+            # Tomamos la última predicción como "próximo" retorno
+            pred_return = float(prediction[-1])
+
+            # Precio objetivo y delta
+            if not np.isnan(price_now):
+                price_target = price_now * (1.0 + pred_return)
+                delta_price = price_target - price_now
+                pips = delta_price / pip_size
+            else:
+                price_target = np.nan
+                delta_price = np.nan
+                pips = np.nan
+
+            # --- NUEVO: Señal BUY / SELL / HOLD usando umbral de pips ---
+            if np.isnan(pips) or abs(pips) < min_pips_signal:
+                signal = "HOLD"
+            else:
+                signal = "BUY" if pips > 0 else "SELL"
+
+            # Métricas de backtest (si existen)
+            m_metrics = metrics_by_model.get(model_name_upper, {})
+            rmse = m_metrics.get("rmse")
+            mae = m_metrics.get("mae")
+            hit_rate = m_metrics.get("hit_rate")
+            accuracy = m_metrics.get("accuracy")
+            dm_stat = m_metrics.get("dm_stat")
+            dm_pvalue = m_metrics.get("dm_pvalue")
+
+            is_best = (model_name_upper == best_model_name)
+
+            self.logger.info(
+                f"  📈 Modelo {model_name} -> retorno={pred_return:.6f}, "
+                f"pips={pips:.2f}, signal={signal}, price_now={price_now}, "
+                f"price_target={price_target}, delta_price={delta_price}, "
+                f"is_best_model={is_best}"
+            )
+
+            row = {
+                "timestamp": df_processed.index[-1],
+                "symbol": self.config.get("data", {}).get("symbol", "UNKNOWN"),
+                "timeframe": self.config.get("data", {}).get("timeframe", "UNKNOWN"),
+                "model": model_name,
+                "pred_return": pred_return,
+                "signal": signal,
+                "entry_price": price_now,
+                "price_target": price_target,
+                "delta_price": delta_price,
+                "pips": pips,
+                "is_best_model": is_best,
+                # Métricas de backtest (pueden ser None si no hay summary_best_runs)
+                "rmse_backtest": rmse,
+                "mae_backtest": mae,
+                "hit_rate_backtest": hit_rate,
+                "accuracy_backtest": accuracy,
+                "dm_stat_backtest": dm_stat,
+                "dm_pvalue_backtest": dm_pvalue,
+            }
+
+            rows.append(row)
+
+        if not rows:
+            self.logger.error("No se generó ninguna señal de producción (todas fallaron).")
+            return
+
+        df_rows = pd.DataFrame(rows)
+
+        # 7) Guardar las señales en CSV
+        output_dir = Path(self.config.get("output", {}).get("dir", "outputs")) / "production"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        csv_path = output_dir / "production_signals.csv"
+
+        if csv_path.exists():
+            existing = pd.read_csv(csv_path)
+            # Construir el conjunto completo de columnas (viejas + nuevas)
+            all_cols = list(existing.columns)
+            for c in df_rows.columns:
+                if c not in all_cols:
+                    all_cols.append(c)
+            # Reindexar ambos dataframes al mismo orden de columnas
+            existing = existing.reindex(columns=all_cols)
+            df_rows = df_rows.reindex(columns=all_cols)
+
+            # Unir y reescribir el archivo completo (con header actualizado)
+            combined = pd.concat([existing, df_rows], ignore_index=True)
+            combined.to_csv(csv_path, index=False)
+            
+        else:
+            df_rows.to_csv(csv_path, index=False)
+
+        self.logger.info(f"\n💾 Señales de producción guardadas en: {csv_path}")
+        self.logger.info("✅ MODO PRODUCCIÓN COMPLETADO\n")
+
         """
         Modo Producción:
         - Carga datos recientes desde MT5

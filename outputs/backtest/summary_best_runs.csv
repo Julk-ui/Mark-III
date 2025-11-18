@@ -1,5 +1,5 @@
 model,rmse,mae,hit_rate,dm_stat,dm_pvalue,sharpe,sortino,max_drawdown,profit_factor,win_rate,payoff_ratio,d,p,q,changepoint_prior_scale,daily_seasonality,seasonality_mode,seasonality_prior_scale,use_lagged_regressors,weekly_seasonality,yearly_seasonality,architecture,batch_size,dropout,early_stopping_patience,epochs,learning_rate,n_layers,units,window
-ARIMA,0.003093,0.002953,60.0,-0.194129,0.846075,9.9485,150.722054,-0.002507,4.727513,60.0,3.151675,1.0,1.0,0.0,,,,,,,,,,,,,,,,
-LSTM,0.003586,0.003121,60.0,0.709069,0.478282,1.216381,27.244907,-0.003978,1.214366,60.0,0.809577,,,,,,,,,,,stacked_lstm,64.0,0.2,3.0,10.0,0.001,1.0,32.0,20.0
-PROPHET,0.00416,0.003209,60.0,0.407355,0.683747,9.9485,150.722054,-0.002507,4.727513,60.0,3.151675,,,,0.1,False,multiplicative,10.0,True,True,False,,,,,,,,,
-RandomWalk,0.003257,0.002872,0.0,,,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,,,,,,,,,,,,,,
+ARIMA,0.006527,0.004222,75.0,-1.535421,0.12468,9.456235,54.887629,-0.003357,9.094822,75.0,3.031607,0.0,2.0,2.0,,,,,,,,,,,,,,,,
+LSTM,0.007225,0.004847,66.666667,-0.776621,0.437383,5.143012,15.873702,-0.009551,2.895164,66.666667,1.447582,,,,,,,,,,,bidirectional_lstm,32.0,0.2,10.0,50.0,0.001,1.0,96.0,20.0
+PROPHET,0.008109,0.005323,66.666667,0.617535,0.536882,-0.163401,-0.126396,-0.024288,0.967888,66.666667,0.483944,,,,0.1,False,multiplicative,1.0,True,True,False,,,,,,,,,
+RandomWalk,0.007679,0.005059,0.0,,,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,,,,,,,,,,,,,,

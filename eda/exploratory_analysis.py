@@ -294,7 +294,7 @@ class ExploratoryAnalysis:
     def _generate_plots(
         self,
         df: pd.DataFrame,
-        symbol: str,
+        symbol: str,    
         price_col: str
     ) -> Dict[str, str]:
         """Genera todos los gráficos del análisis"""
@@ -317,6 +317,12 @@ class ExploratoryAnalysis:
         
         # 6. Descomposición
         plots["decomposition"] = self._plot_decomposition(df, symbol, price_col)
+        
+        # 7. Sharpe ratio móvil
+        plots["rolling_sharpe"] = self._plot_rolling_sharpe(df, symbol, price_col)
+
+        # 8. Curva de drawdown
+        plots["drawdown_curve"] = self._plot_drawdown_curve(df, symbol, price_col)
         
         print(f"\n📁 Gráficos guardados en: {self.output_dir}")
         
@@ -490,6 +496,234 @@ class ExploratoryAnalysis:
         except Exception as e:
             print(f"  ⚠️  Gráfico de descomposición omitido: {e}")
             return ""
+    def plot_predicted_vs_observed_returns(
+        self,
+        y_true,
+        y_pred,
+        symbol: str,
+        model_name: str = "ARIMA",
+        filename_suffix: str | None = None
+    ) -> str:
+        """
+        Grafica retornos observados vs. retornos pronosticados para un modelo.
+
+        Pensado para retornos diarios (por ejemplo, del backtest ARIMA),
+        pero sirve para cualquier horizonte si se usan retornos.
+
+        Args:
+            y_true: Serie/array/lista con retornos observados.
+            y_pred: Serie/array/lista con retornos pronosticados.
+            symbol: Símbolo (EURUSD, SPY, etc.).
+            model_name: Nombre del modelo (ARIMA, LSTM, PROPHET...).
+            filename_suffix: Texto opcional para el nombre del archivo.
+
+        Returns:
+            Ruta del archivo PNG generado.
+        """
+        # Convertir a arrays NumPy y alinear longitudes
+        y_true = np.asarray(y_true, dtype=float)
+        y_pred = np.asarray(y_pred, dtype=float)
+
+        n = min(len(y_true), len(y_pred))
+        y_true = y_true[:n]
+        y_pred = y_pred[:n]
+
+        # Filtrar NaN
+        mask = ~np.isnan(y_true) & ~np.isnan(y_pred)
+        y_true = y_true[mask]
+        y_pred = y_pred[mask]
+
+        if len(y_true) == 0:
+            print("⚠️ No hay datos válidos para graficar retornos observados vs pronosticados.")
+            return ""
+
+        # Cálculo de aciertos direccionales
+        hits = np.sign(y_true) == np.sign(y_pred)
+        hit_rate = hits.mean() * 100
+
+        # Gráfico
+        fig, ax = plt.subplots(figsize=(8, 8))
+
+        # Puntos donde la dirección fue correcta
+        ax.scatter(
+            y_true[hits],
+            y_pred[hits],
+            alpha=0.7,
+            edgecolor="black",
+            s=40,
+            label=f"Aciertos ({hit_rate:.1f}%)",
+            color="#2E86AB",
+        )
+
+        # Puntos donde la dirección fue incorrecta
+        if (~hits).any():
+            ax.scatter(
+                y_true[~hits],
+                y_pred[~hits],
+                alpha=0.7,
+                edgecolor="black",
+                s=40,
+                label="Errores",
+                color="#A23B72",
+                marker="x",
+            )
+
+        # Línea y = x
+        min_val = min(y_true.min(), y_pred.min())
+        max_val = max(y_true.max(), y_pred.max())
+        padding = 0.05 * (max_val - min_val)
+        min_lim = min_val - padding
+        max_lim = max_val + padding
+
+        ax.plot(
+            [min_lim, max_lim],
+            [min_lim, max_lim],
+            linestyle="--",
+            color="gray",
+            linewidth=1,
+            label="Línea y = x",
+        )
+
+        # Ejes y cuadrantes (para ver direcciones)
+        ax.axhline(0, color="gray", linewidth=0.8)
+        ax.axvline(0, color="gray", linewidth=0.8)
+
+        ax.set_xlabel("Retornos observados", fontsize=11)
+        ax.set_ylabel("Retornos pronosticados", fontsize=11)
+        ax.set_title(
+            f"{symbol} - {model_name}\nRetornos diarios pronosticados vs observados",
+            fontsize=13,
+            weight="bold",
+        )
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+        # Cuadro de texto con resumen
+        textstr = (
+            f"n = {len(y_true)}\n"
+            f"Hit rate direccional = {hit_rate:.1f}%"
+        )
+        ax.text(
+            0.02,
+            0.98,
+            textstr,
+            transform=ax.transAxes,
+            fontsize=10,
+            verticalalignment="top",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        )
+
+        plt.tight_layout()
+
+        # Nombre de archivo
+        if filename_suffix is None:
+            filename_suffix = model_name
+
+        path = self.output_dir / f"{symbol}_retornos_pred_vs_obs_{filename_suffix}.png"
+        plt.savefig(path, dpi=150, bbox_inches="tight")
+        plt.close()
+
+        print(f"📈 Gráfico retornos observados vs pronosticados guardado en: {path}")
+        return str(path)
+
+    def _plot_rolling_sharpe(
+        self,
+        df: pd.DataFrame,
+        symbol: str,
+        price_col: str,
+        window: int = 60
+    ) -> str:
+        """
+        Gráfico del Sharpe ratio móvil (anualizado) para ver períodos
+        donde el activo tuvo mejor/peor perfil riesgo-retorno.
+
+        window: ventana en días (60 ~ 3 meses aprox. en datos diarios).
+        """
+        returns = df[price_col].pct_change().dropna()
+        rolling_mean = returns.rolling(window).mean()
+        rolling_std = returns.rolling(window).std()
+
+        sharpe = (rolling_mean / rolling_std) * np.sqrt(252)
+        sharpe = sharpe.dropna()
+
+        if sharpe.empty:
+            print("⚠️ No se pudo calcular Sharpe móvil (muy pocos datos).")
+            return ""
+
+        fig, ax = plt.subplots(figsize=(14, 5))
+        ax.plot(sharpe.index, sharpe, color="#2E86AB", linewidth=1.5)
+        ax.axhline(0, color="gray", linewidth=0.8)
+        ax.set_title(
+            f"{symbol} - Sharpe Ratio móvil ({window} días, anualizado)",
+            fontsize=12,
+            weight="bold",
+        )
+        ax.set_ylabel("Sharpe Ratio", fontsize=11)
+        ax.set_xlabel("Fecha", fontsize=11)
+        ax.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        path = self.output_dir / f"{symbol}_08_rolling_sharpe.png"
+        plt.savefig(path, dpi=150, bbox_inches="tight")
+        plt.close()
+
+        return str(path)
+
+    def _plot_drawdown_curve(
+        self,
+        df: pd.DataFrame,
+        symbol: str,
+        price_col: str
+    ) -> str:
+        """
+        Gráfico de la curva de equity y drawdown máximo.
+
+        Muestra cómo se acumulan retornos y en qué períodos
+        el activo sufre caídas significativas desde su máximo.
+        """
+        # Retornos simples
+        returns = df[price_col].pct_change().fillna(0)
+        equity = (1 + returns).cumprod()
+        running_max = equity.cummax()
+        drawdown = equity / running_max - 1
+
+        fig, (ax1, ax2) = plt.subplots(
+            2, 1, figsize=(14, 8),
+            gridspec_kw={"height_ratios": [2, 1]},
+            sharex=True
+        )
+
+        # Curva de equity
+        ax1.plot(equity.index, equity, color="#2E86AB", linewidth=1.5)
+        ax1.set_title(f"{symbol} - Curva de Equity y Drawdown", fontsize=12, weight="bold")
+        ax1.set_ylabel("Equity (índice)", fontsize=11)
+        ax1.grid(True, alpha=0.3)
+
+        # Drawdown
+        ax2.fill_between(drawdown.index, drawdown, 0, color="#A23B72", alpha=0.5)
+        ax2.set_ylabel("Drawdown", fontsize=11)
+        ax2.set_xlabel("Fecha", fontsize=11)
+        ax2.grid(True, alpha=0.3)
+
+        # Texto con drawdown máximo
+        max_dd = drawdown.min()
+        ax2.text(
+            0.02,
+            0.95,
+            f"Drawdown máximo: {max_dd:.2%}",
+            transform=ax2.transAxes,
+            fontsize=10,
+            verticalalignment="top",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        )
+
+        plt.tight_layout()
+        path = self.output_dir / f"{symbol}_09_drawdown_curve.png"
+        plt.savefig(path, dpi=150, bbox_inches="tight")
+        plt.close()
+
+        return str(path)
+
     
     def _print_summary(self) -> None:
         """Imprime resumen ejecutivo"""

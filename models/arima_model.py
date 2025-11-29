@@ -57,6 +57,10 @@ class ArimaModel(BaseModel):
             final_prediction = arima_prediction + residual_prediction
             
             return final_prediction.tolist()
+            # --- PREDICCIÓN SÓLO CON ARIMA ---
+            #arima_prediction = model_fit.forecast(steps=len(X_test))
+
+            #return arima_prediction.tolist()
         except Exception as e:
             self.logger.error(f"ARIMA Error: {e}")
             return [0] * len(X_test) # Fallback a 0 si hay error

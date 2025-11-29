@@ -11,15 +11,17 @@ mt5:
 
 validation:
   mode: last_n
-  n: 500
+  n: 0
 
 # --- DATOS ---
 data:
   symbol: "EURUSD"
+  #.US500Cash
   timeframe: "D1"  # D1, H1, H4, M15, etc.
   n_bars: 1500
   use_cache: false
   cache_expiry_hours: 24
+  #pip_size: 1.0
   pip_size: 0.0001
   
   # Símbolos adicionales (para análisis multi-activo)
@@ -95,13 +97,13 @@ models:
     # El pipeline probará todas las combinaciones posibles.
     param_grid:
       p: [1, 2, 5]
-      d: [0, 1]
+      d: [0]
       q: [0, 1, 2]
       # Para ARIMA estacional, se podría añadir:
       # seasonal_order: [[1,1,1,12], [0,1,1,12]]
     
   - name: PROPHET
-    enabled: true
+    enabled: false
     param_grid:
       changepoint_prior_scale: [0.01, 0.05, 0.1]
       seasonality_prior_scale: [0.1, 1.0, 10.0]
@@ -112,7 +114,7 @@ models:
       use_lagged_regressors: [true] # <-- AÑADIR ESTA LÍNEA
     
   - name: LSTM
-    enabled: true
+    enabled: false
     param_grid:
       # --- Grid Search Reducido (~2 horas) ---
       window: [20, 40]                # Probar ventana corta y larga
@@ -133,27 +135,30 @@ models:
 # --- BACKTESTING ---
 backtest:
   enabled: true
-  initial_train: 800          # Datos para entrenamiento inicial
-  step: 60                    # Paso de rolling window (aumentado)
+  initial_train: 700          # Datos para entrenamiento inicial
+  step: 5                    # Paso de rolling window (aumentado)
   horizon: 1                  # Horizonte de predicción
   target: "Return_1"          # Columna objetivo exacta (Return_1, Close, etc.)
   # --- Umbral mínimo para considerar una señal en backtest ---
   pip_size: 0.0001          # típico EURUSD
-  threshold_pips: 12.0      # mínimo de pips para que cuente como trade en métricas
-  
-target: "Return_1"
+  threshold_pips: 10.0
+  plot_scale: "price"    # mínimo de pips para que cuente como trade en métricas
 
-# Métricas a calcular (y a guardar en los CSV)
-metrics:
-  - mae
-  - rmse
-  - hit_rate
-  - sharpe
-  - sortino
-  - max_drawdown
-  - profit_factor
-  - win_rate
-  - payoff_ratio
+  # Métricas a calcular (y a guardar en los CSV)
+  metrics:
+    - mae
+    - rmse
+    - hit_rate
+    - dm_stat
+    - dm_pvalue
+    - sharpe
+    - sortino
+    - max_drawdown
+    - profit_factor
+    - win_rate
+    - payoff_ratio
+    - n_test_points
+    - n_trades    
 
 # --- OUTPUT ---
 output:
@@ -170,7 +175,37 @@ output:
 
 trading:
   # --- NUEVO: umbral mínimo de señal en producción ---
-  min_pips_signal: 20.0      # ej: abrir trade solo si la predicción supera 20 pips
+  min_pips_signal: 10.0      # ej: abrir trade solo si la predicción supera 20 pips
+
+# --- Gestión del riesgo ---
+risk:
+  # % de la cuenta a arriesgar por trade (0.01 = 1%)
+  risk_per_trade_pct: 0.01
+
+  # Opcional: si no lees el balance desde MT5, puedes fijarlo aquí
+  # account_balance: 10000
+
+  # Cómo calcular el Stop Loss:
+  # - "atr"  → SL dinámico según volatilidad (ATR_14)
+  # - "fixed" → SL fijo en pips
+  sl_mode: "atr"
+
+  # Si sl_mode = "fixed"
+  fixed_sl_pips: 30.0
+
+  # Si sl_mode = "atr": SL = ATR * atr_sl_multiplier, acotado por min/max
+  atr_sl_multiplier: 1.5
+  atr_sl_min_pips: 10.0
+  atr_sl_max_pips: 40.0
+
+  # Relación TP/SL (2.0 = TP al doble de la distancia del SL)
+  tp_rr_ratio: 2.0
+
+  # Cómo defines el precio de entrada:
+  # - "close"        → entrada al precio de cierre actual
+  # - "atr_pullback" → espera un retroceso de ATR * atr_entry_mult
+  entry_mode: "atr_pullback"
+  atr_entry_mult: 0.5
 
 # --- LOGGING ---
 logging:
@@ -185,13 +220,6 @@ execution:
   mode: "backtest"            # eda, train, backtest, production
   parallel: false             # Ejecutar modelos en paralelo
   n_jobs: -1                  # -1 para usar todos los cores
-
-# --- VALIDACIÓN ---
-validation:
-  enabled: true
-  method: "time_series_split"  # time_series_split, expanding_window
-  n_splits: 5
-  test_size: 0.2
 
 # --- SELECCIÓN DEL MEJOR MODELO ---
 model_selection:

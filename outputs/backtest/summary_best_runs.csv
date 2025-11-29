@@ -1,5 +1,3 @@
-model,rmse,mae,hit_rate,dm_stat,dm_pvalue,sharpe,sortino,max_drawdown,profit_factor,win_rate,payoff_ratio,d,p,q,changepoint_prior_scale,daily_seasonality,seasonality_mode,seasonality_prior_scale,use_lagged_regressors,weekly_seasonality,yearly_seasonality,architecture,batch_size,dropout,early_stopping_patience,epochs,learning_rate,n_layers,units,window
-ARIMA,0.006527,0.004222,75.0,-1.535421,0.12468,9.456235,54.887629,-0.003357,9.094822,75.0,3.031607,0.0,2.0,2.0,,,,,,,,,,,,,,,,
-LSTM,0.007225,0.004847,66.666667,-0.776621,0.437383,5.143012,15.873702,-0.009551,2.895164,66.666667,1.447582,,,,,,,,,,,bidirectional_lstm,32.0,0.2,10.0,50.0,0.001,1.0,96.0,20.0
-PROPHET,0.008109,0.005323,66.666667,0.617535,0.536882,-0.163401,-0.126396,-0.024288,0.967888,66.666667,0.483944,,,,0.1,False,multiplicative,1.0,True,True,False,,,,,,,,,
-RandomWalk,0.007679,0.005059,0.0,,,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,,,,,,,,,,,,,,
+model,mae,rmse,hit_rate,dm_stat,dm_pvalue,sharpe,sortino,max_drawdown,profit_factor,win_rate,payoff_ratio,n_test_points,n_trades,d,p,q
+ARIMA,0.002997,0.003957,82.5,-4.266679,2e-05,8.065003,21.998111,-0.004211,14.190041,82.5,3.010009,160,80,0.0,2.0,1.0
+RandomWalk,0.005137,0.006738,52.671756,4.635331,4e-06,-0.981235,-1.265277,-0.064894,0.83242,52.671756,0.747972,160,131,,,

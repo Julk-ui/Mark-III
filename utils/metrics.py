@@ -216,25 +216,25 @@ def calculate_all_metrics(
     predicted_values,
     benchmark_values=None,   # opcional: benchmark explícito
     risk_free: float = 0.0,  # tasa libre de riesgo anual (para Sharpe/Sortino)
-    periods_per_year: int = 252,  # frecuencia (252 para diario, 12 para mensual, etc.)
+    periods_per_year: int = 252,  # 252 si es diario, 12 si es mensual, etc.
     pip_size: float = 0.0001,
     threshold_pips: float = 0.0,
 ) -> dict[str, float]:
     """
-    Calcula varias métricas de un solo modelo:
+    Calcula varias métricas de un solo modelo.
 
-    Error de predicción (SIEMPRE sobre la predicción completa):
+    Error de predicción (SIEMPRE sobre toda la serie):
     - rmse
     - mae
 
-    Métrica direccional:
-    - hit_rate  (aplicando umbral de pips, si se define)
+    Métrica direccional (con umbral de pips):
+    - hit_rate
 
     Comparación con benchmark (Diebold-Mariano):
     - dm_stat
     - dm_pvalue
 
-    Métricas de trading basadas en la dirección de la predicción:
+    Métricas de trading basadas en señal direccional:
     - sharpe
     - sortino
     - max_drawdown
@@ -242,10 +242,14 @@ def calculate_all_metrics(
     - win_rate
     - payoff_ratio
 
+    Métricas de conteo:
+    - n_test_points  (número total de puntos de test)
+    - n_trades       (número de trades efectivamente ejecutados)
+
     Notas:
-    - Se asume que true_values son retornos (p.ej. Return_1).
-    - La señal se construye como sign(predicted_values) tras aplicar threshold_pips.
-    - Si no se pasa benchmark_values, se usa un benchmark ingenuo: predicción = 0.
+    - Se asume que true_values son retornos (ej. Return_1).
+    - La señal se construye como sign(predicted_values) TRAS aplicar el umbral.
+    - Si no se pasa benchmark_values, se usa un benchmark ingenuo: pred = 0.
     """
 
     true = np.array(true_values, dtype=float)
@@ -256,36 +260,43 @@ def calculate_all_metrics(
 
     metrics: dict[str, float] = {}
 
-    # =========================
-    #  MÉTRICAS DE ERROR (sin umbral)
-    # =========================
-    metrics["rmse"] = calculate_rmse(true, pred)
-    metrics["mae"] = calculate_mae(true, pred)
+    # -------------------------
+    # Conteo básico
+    # -------------------------
+    metrics["n_test_points"] = int(len(true))
 
-    # =========================
-    #  APLICAR UMBRAL EN PIPS PARA SEÑALES DE TRADING
-    # =========================
-    # Si threshold_pips > 0, forzamos HOLD cuando la predicción sea "pequeña"
+    # -------------------------
+    # Métricas de error (sin umbral)
+    # -------------------------
+    metrics["rmse"] = calculate_rmse(true, pred)
+    metrics["mae"]  = calculate_mae(true, pred)
+
+    # -------------------------
+    # Aplicar umbral de pips a las señales de trading
+    # -------------------------
+    # por seguridad
     if pip_size <= 0:
-        pip_size = 1.0  # fallback defensivo
+        pip_size = 1.0
 
     if threshold_pips > 0.0:
-        # Aproximación: retorno mínimo equivalente a X pips
+        # Aproximación: retorno mínimo equivalente a X pips.
+        # Para FX cerca de 1.0 (EURUSD) esto funciona razonablemente.
         threshold_return = threshold_pips * pip_size
-        pred_for_signals = pred.copy()
-        small = np.abs(pred_for_signals) < threshold_return
-        pred_for_signals[small] = 0.0
+
+        pred_for_trading = pred.copy()
+        mask_small = np.abs(pred_for_trading) < threshold_return
+        pred_for_trading[mask_small] = 0.0  # estas predicciones NO generan trade
     else:
-        pred_for_signals = pred
+        pred_for_trading = pred
 
-    # =========================
-    #  HIT RATE (con umbral aplicado)
-    # =========================
-    metrics["hit_rate"] = calculate_hit_rate(true, pred_for_signals)
+    # -------------------------
+    # Hit Rate (con umbral aplicado)
+    # -------------------------
+    metrics["hit_rate"] = calculate_hit_rate(true, pred_for_trading)
 
-    # =========================
-    #  DIEBOLD–MARIANO (sin umbral, usa la predicción cruda)
-    # =========================
+    # -------------------------
+    # Diebold–Mariano (sin umbral, sobre la predicción cruda)
+    # -------------------------
     if benchmark_values is None:
         bench = np.zeros_like(true)
     else:
@@ -301,10 +312,14 @@ def calculate_all_metrics(
     metrics["dm_stat"] = dm_stat
     metrics["dm_pvalue"] = dm_pvalue
 
-    # =========================
-    #  MÉTRICAS DE TRADING (sobre señales filtradas por umbral)
-    # =========================
-    pnl = _compute_pnl_series(true, pred_for_signals)
+    # -------------------------
+    # Métricas de trading (solo donde hay trade)
+    # -------------------------
+    pnl = _compute_pnl_series(true, pred_for_trading)
+
+    # nº de trades = puntos donde la señal no es 0
+    n_trades = int(np.count_nonzero(pnl))
+    metrics["n_trades"] = n_trades
 
     sharpe = calculate_sharpe_ratio(pnl, risk_free=risk_free, periods_per_year=periods_per_year)
     sortino = calculate_sortino_ratio(pnl, risk_free=risk_free, periods_per_year=periods_per_year)
@@ -312,11 +327,11 @@ def calculate_all_metrics(
     profit_factor = calculate_profit_factor(pnl)
     win_rate, payoff = calculate_win_rate_and_payoff(pnl)
 
-    metrics["sharpe"] = sharpe
-    metrics["sortino"] = sortino
-    metrics["max_drawdown"] = max_dd
+    metrics["sharpe"]        = sharpe
+    metrics["sortino"]       = sortino
+    metrics["max_drawdown"]  = max_dd
     metrics["profit_factor"] = profit_factor
-    metrics["win_rate"] = win_rate
-    metrics["payoff_ratio"] = payoff
+    metrics["win_rate"]      = win_rate
+    metrics["payoff_ratio"]  = payoff
 
     return metrics

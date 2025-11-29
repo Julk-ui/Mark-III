@@ -106,143 +106,166 @@ class ProphetModel(BaseModel):
         self.logger.info(f"[PROPHET] Modelo guardado en: {model_path}")
 
     def load_model(self, model_path: str | Path) -> None:
+        """
+        Carga un modelo Prophet previamente guardado.
+
+        Soporta artefactos de dos tipos:
+
+        1) Instancia directa de Prophet pickeada:
+           joblib.dump(model, "prophet_best.pkl")
+
+        2) Diccionario con metadatos, por ejemplo:
+           {
+               "model_class": "...",
+               "params": {...},
+               "model": <instancia Prophet>,
+               "target_name": "Return_1",
+               "feature_names": [...]
+           }
+        """
+        from prophet import Prophet  # import local para asegurar la clase correcta
+
         model_path = Path(model_path)
-        data = joblib.load(model_path)
-        self.model_ = data["model"]
-        self.regressor_cols = data.get("regressor_cols", [])
-        self._is_fitted = True
-        self.logger.info(f"[PROPHET] Modelo cargado desde: {model_path}")
+        artifact = joblib.load(model_path)
+
+        if getattr(self, "logger", None) is not None:
+            self.logger.info(f"[PROPHET] Cargando artefacto desde: {model_path}")
+            self.logger.info(f"[PROPHET] Tipo de artefacto: {type(artifact)}")
+            if isinstance(artifact, dict):
+                self.logger.info(f"[PROPHET] Claves del artefacto: {list(artifact.keys())}")
+
+        # Caso 1: el archivo contiene directamente una instancia de Prophet
+        if isinstance(artifact, Prophet):
+            self.model_ = artifact
+            self.model = artifact
+
+            # En este formato antiguo normalmente no hay params ni regressor_cols
+            if not hasattr(self, "params"):
+                self.params = {}
+            if not hasattr(self, "regressor_cols"):
+                self.regressor_cols = []
+
+            self._is_fitted = True
+            if getattr(self, "logger", None) is not None:
+                self.logger.info(f"[PROPHET] Modelo (instancia directa) cargado desde: {model_path}")
+            return
+
+        # Caso 2: el archivo contiene un diccionario con el modelo y metadatos
+        if isinstance(artifact, dict):
+            model = artifact.get("model") or artifact.get("model_", None)
+
+            if model is None:
+                raise ValueError(
+                    f"[PROPHET] El artefacto cargado desde {model_path} no contiene "
+                    "una clave 'model' ni 'model_'."
+                )
+
+            # No hacemos isinstance(model, Prophet) para evitar problemas de versiones;
+            # solo exigimos que tenga un método predict (como Prophet).
+            if not hasattr(model, "predict"):
+                raise ValueError(
+                    f"[PROPHET] La clave 'model' del artefacto cargado desde {model_path} "
+                    "no parece un modelo Prophet válido (no tiene método 'predict')."
+                )
+
+            self.model_ = model
+            self.model = model
+
+            # Restaurar params si existen
+            loaded_params = artifact.get("params")
+            if loaded_params is not None:
+                self.params = loaded_params
+
+            # Restaurar lista de regresores / features
+            reg_cols = artifact.get("regressor_cols")
+            if reg_cols is None:
+                # En tu artefacto actual aparece 'feature_names'
+                reg_cols = artifact.get("feature_names")
+
+            self.regressor_cols = list(reg_cols) if reg_cols is not None else []
+
+            self._is_fitted = True
+
+            if getattr(self, "logger", None) is not None:
+                self.logger.info(f"[PROPHET] Modelo cargado desde: {model_path}")
+                self.logger.info(f"[PROPHET] Regresores restaurados: {self.regressor_cols}")
+
+            return
+
+        # Si llegamos aquí, el formato es algo inesperado
+        raise ValueError(
+            f"[PROPHET] Formato de artefacto no soportado en {model_path}: {type(artifact)}"
+        )
 
     def predict_loaded(self, X_all: pd.DataFrame | None = None) -> list[float]:
         """
         Usa el modelo Prophet ya cargado para predecir el siguiente retorno.
 
         - X_all: dataframe de features con índice datetime.
-        - Si el modelo se entrenó con regresores extra, tratamos de usarlos;
-          si faltan algunos en X_all, se loguea un warning y se rellena con 0.0.
+        - Si el modelo se entrenó con regresores extra, se intentan usar.
+        Si faltan columnas en X_all, se loguea un warning y se rellenan con 0.0.
         """
         # 1) Verificar que el modelo está cargado
         if not getattr(self, "_is_fitted", False) or self.model_ is None:
-            raise RuntimeError("[PROPHET] predict_loaded llamado sin que el modelo esté cargado.")
+            msg = "[PROPHET] predict_loaded llamado sin que el modelo esté cargado."
+            self.logger.error(msg)
+            raise RuntimeError(msg)
 
         if X_all is None or X_all.empty:
-            self.logger.error("[PROPHET] X_all vacío al predecir en producción.")
+            self.logger.error("[PROPHET] X_all está vacío o es None.")
             return []
 
-        # 2) Determinar qué regresores espera Prophet
-        if hasattr(self.model_, "extra_regressors"):
-            expected_regs = list(self.model_.extra_regressors.keys())
+        # 2) Determinar timestamp objetivo: último índice de X_all
+        if not isinstance(X_all.index, (pd.DatetimeIndex,)):
+            self.logger.warning(
+                "[PROPHET] X_all no tiene DatetimeIndex; se usará un índice artificial."
+            )
+            last_timestamp = pd.Timestamp.utcnow()
         else:
-            expected_regs = []
+            last_timestamp = X_all.index[-1]
 
-        # Intersección: solo usamos los regresores que existen en X_all
-        available_regs = [c for c in expected_regs if c in X_all.columns]
-        missing_regs = [c for c in expected_regs if c not in X_all.columns]
+        # 3) Construir dataframe para forecast de 1 paso
+        df_for_fcst = pd.DataFrame({"ds": [last_timestamp]})
 
+        # Si no tenemos lista de regresores guardada, asumimos todas las columnas excepto el target
+        target_col = "Return_1"
+        if not getattr(self, "regressor_cols", []):
+            self.regressor_cols = [c for c in X_all.columns if c != target_col]
+
+        available_regs = [c for c in self.regressor_cols if c in X_all.columns]
+        missing_regs = [c for c in self.regressor_cols if c not in X_all.columns]
+
+        # Rellenar regresores disponibles con el último valor
+        last_row = X_all.iloc[-1]
+        for reg in available_regs:
+            df_for_fcst[reg] = [last_row[reg]]
+
+        # Rellenar regresores faltantes con 0.0 (y loguear)
         if missing_regs:
             self.logger.warning(
-                f"[PROPHET] Regressors faltantes en producción (se rellenan con 0.0): {missing_regs}"
+                f"[PROPHET] Faltan regresores en X_all: {missing_regs}. "
+                "Se rellenan con 0.0 para el forecast."
             )
+            for reg in missing_regs:
+                df_for_fcst[reg] = [0.0]
 
-        # 3) Construir dataframe de predicción con la última fila
-        last_timestamp = X_all.index[-1]
-        df_fcst = pd.DataFrame({"ds": [last_timestamp]})
-
-        # Asignar los valores de los regresores disponibles
-        for reg in available_regs:
-            df_fcst[reg] = X_all[reg].iloc[-1]
-
-        # Para los regresores que faltan, crear la columna con 0.0
-        for reg in missing_regs:
-            df_fcst[reg] = 0.0
-
-        # 4) Ejecutar la predicción con Prophet
+        # 4) Hacer predicción
         try:
-            forecast = self.model_.predict(df_fcst)
+            forecast = self.model_.predict(df_for_fcst)
         except Exception as e:
-            self.logger.error(f"[PROPHET] Error en predict_loaded: {e}")
+            self.logger.error(f"[PROPHET] Error en model_.predict: {e}")
             return []
 
-        # 5) Usar el último yhat como predicción de retorno
+        if "yhat" not in forecast.columns:
+            self.logger.error("[PROPHET] La salida de predict no contiene columna 'yhat'.")
+            return []
+
         yhat = float(forecast["yhat"].iloc[-1])
+        self.logger.info(
+            f"[PROPHET] Predicción (yhat) para {last_timestamp}: {yhat:.6f}"
+        )
+        # Para ser consistente con el resto, devolvemos una lista
         return [yhat]
-
-        """
-        Usa el modelo Prophet ya cargado para predecir el siguiente retorno.
-
-        - X_all: dataframe de features (incluye 'Open', 'Close', etc.) con índice datetime.
-        """
-
-        if self.model is None:
-            raise RuntimeError("[PROPHET] predict_loaded llamado sin que el modelo esté cargado.")
-
-        if X_all is None or X_all.empty:
-            self.logger.error("[PROPHET] X_all vacío al predecir en producción.")
-            return []
-
-        # 1) Recuperar la lista de regresores que Prophet espera
-        expected_regs = list(self.model.extra_regressors.keys())
-        self.logger.debug(f"[PROPHET] Regressors esperados: {expected_regs}")
-
-        # 2) Construir el dataframe future con índice de fechas + columnas de regresores
-        #    Tomamos la ÚLTIMA fila (la más reciente) para predecir 1 paso adelante.
-        X_last = X_all.tail(1).copy()
-
-        # Asegurarnos de que haya una columna 'ds' con las fechas
-        if "ds" in X_last.columns:
-            future = X_last.copy()
-        else:
-            # El índice debe ser datetime
-            future = X_last.reset_index().rename(columns={X_last.index.name or "index": "ds"})
-
-        # 3) Verificar que todos los regresores existan en future
-        missing = [r for r in expected_regs if r not in future.columns]
-        if missing:
-            self.logger.error(
-                f"[PROPHET] Faltan estos regresores en future_df: {missing}. "
-                "Revisa que _generate_features conserve esas columnas."
-            )
-            return []
-
-        # 4) Dejar sólo ds + regresores, en el orden correcto
-        cols = ["ds"] + expected_regs
-        future = future[cols]
-
-        # Rellenar posibles NaN
-        future = future.ffill().bfill()
-
-        # 5) Predecir con el modelo Prophet cargado
-        try:
-            forecast = self.model.predict(future)
-        except Exception as e:
-            self.logger.error(f"[PROPHET] Error en predict_loaded: {e}")
-            return []
-
-        # Usamos el último yhat como predicción de retorno
-        yhat = float(forecast["yhat"].iloc[-1])
-        return [yhat]
-
-        """
-        Usa el modelo Prophet ya cargado para predecir el próximo retorno.
-        Tomamos la última fecha del índice y los últimos valores de los regresores.
-        """
-        if not getattr(self, "_is_fitted", False):
-            raise RuntimeError("Prophet no está cargado/entrenado. Llama antes a load_model().")
-
-        if X_all is None or X_all.empty:
-            self.logger.error("[PROPHET] X_all vacío al predecir en producción.")
-            return []
-
-        last_timestamp = X_all.index[-1]
-        future = pd.DataFrame({"ds": [last_timestamp]})
-
-        for col in getattr(self, "regressor_cols", []):
-            future[col] = X_all[col].iloc[-1]
-
-        forecast = self.model_.predict(future)
-        # Asumimos que la variable objetivo es el retorno a 1 paso (yhat)
-        yhat = forecast["yhat"].iloc[-1]
-        return [float(yhat)]
     
     def train_and_save(
         self,

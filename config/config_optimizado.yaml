@@ -4,10 +4,8 @@ mt5:
   server: RoboForex-Pro
   path: C:\Program Files\RoboForex - MetaTrader 5\terminal64.exe
 validation:
-  enabled: true
-  method: time_series_split
-  n_splits: 5
-  test_size: 0.2
+  mode: last_n
+  n: 0
 data:
   symbol: EURUSD
   timeframe: D1
@@ -75,52 +73,40 @@ features:
 models:
 - name: RandomWalk
   enabled: true
-  params: {}
+  params:
+    n_test_points: 160
+    n_trades: 131
 - name: ARIMA
   enabled: true
   params:
+    n_test_points: 160
+    n_trades: 79
     d: 0.0
-    p: 2.0
-    q: 2.0
-- name: PROPHET
-  enabled: true
-  params:
-    changepoint_prior_scale: 0.1
-    daily_seasonality: false
-    seasonality_mode: multiplicative
-    seasonality_prior_scale: 1.0
-    use_lagged_regressors: true
-    weekly_seasonality: true
-    yearly_seasonality: false
-- name: LSTM
-  enabled: true
-  params:
-    architecture: stacked_lstm
-    batch_size: 32.0
-    dropout: 0.2
-    early_stopping_patience: 10.0
-    epochs: 50.0
-    learning_rate: 0.001
-    n_layers: 2.0
-    units: 32.0
-    window: 20.0
+    p: 5.0
+    q: 0.0
 backtest:
   enabled: true
-  initial_train: 800
-  step: 60
+  initial_train: 700
+  step: 5
   horizon: 1
   target: Return_1
-target: Return_1
-metrics:
-- mae
-- rmse
-- hit_rate
-- sharpe
-- sortino
-- max_drawdown
-- profit_factor
-- win_rate
-- payoff_ratio
+  pip_size: 0.0001
+  threshold_pips: 10.0
+  plot_scale: price
+  metrics:
+  - mae
+  - rmse
+  - hit_rate
+  - dm_stat
+  - dm_pvalue
+  - sharpe
+  - sortino
+  - max_drawdown
+  - profit_factor
+  - win_rate
+  - payoff_ratio
+  - n_test_points
+  - n_trades
 output:
   dir: outputs
   save_predictions: true
@@ -130,6 +116,18 @@ output:
   - csv
   - excel
   - pdf
+trading:
+  min_pips_signal: 10.0
+risk:
+  risk_per_trade_pct: 0.01
+  sl_mode: atr
+  fixed_sl_pips: 30.0
+  atr_sl_multiplier: 1.5
+  atr_sl_min_pips: 10.0
+  atr_sl_max_pips: 40.0
+  tp_rr_ratio: 2.0
+  entry_mode: atr_pullback
+  atr_entry_mult: 0.5
 logging:
   enabled: true
   level: INFO

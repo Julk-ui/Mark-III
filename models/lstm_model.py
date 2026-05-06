@@ -5,16 +5,20 @@ Implementación de un modelo LSTM para predicción.
 """
 # --- imports (reemplaza solo este bloque) ---
 from __future__ import annotations
+import os
 import numpy as np
 import pandas as pd
 import joblib
 from sklearn.preprocessing import MinMaxScaler
 from pathlib import Path
-
+import gc
+import tensorflow as tf
+from sklearn.preprocessing import StandardScaler
 # TensorFlow / Keras (robusto para distintas instalaciones)
 try:
     import tensorflow as tf
     from tensorflow import keras
+    from keras import backend as K
 except ImportError:  # fallback si alguien tiene keras standalone
     import keras     # type: ignore
     tf = None        # opcional
@@ -32,7 +36,99 @@ from .base_model import BaseModel
 
 class LSTMModel(BaseModel):
     """Modelo LSTM para predicción de series temporales."""
+    def _cleanup_tf(self) -> None:
+        """Libera memoria de TensorFlow/Keras entre entrenamientos (especialmente en backtests)."""
+        try:
+            if getattr(self, "model", None) is not None:
+                del self.model
+        except Exception:
+            pass
 
+        self.model = None
+
+        try:
+            K.clear_session()
+        except Exception:
+            pass
+
+        gc.collect()
+    
+    def build_model(self, input_shape, params):
+        """
+        Construye y compila el modelo según params.
+        input_shape: (window, n_features)
+        """
+        architecture = params.get("architecture", "stacked_lstm")
+        units = int(params.get("units", 32))
+        n_layers = int(params.get("n_layers", 1))
+        dropout = float(params.get("dropout", 0.2))
+        learning_rate = float(params.get("learning_rate", 0.001))
+
+        # Cache para no recompilar innecesariamente en cada ventana (acelera MUCHO)
+        signature = (architecture, units, n_layers, dropout, learning_rate, tuple(input_shape))
+
+        if not hasattr(self, "_cached_signature"):
+            self._cached_signature = None
+            self._cached_initial_weights = None
+
+        # Si cambian hiperparámetros o input_shape => rebuild completo
+        if self.model is None or self._cached_signature != signature:
+            self.model = Sequential()
+
+            if architecture == "bidirectional_lstm":
+                # Capa(s) LSTM bidireccional(es)
+                if n_layers <= 1:
+                    self.model.add(Bidirectional(LSTM(units, return_sequences=False), input_shape=input_shape))
+                    if dropout > 0:
+                        self.model.add(Dropout(dropout))
+                else:
+                    self.model.add(Bidirectional(LSTM(units, return_sequences=True), input_shape=input_shape))
+                    if dropout > 0:
+                        self.model.add(Dropout(dropout))
+                    for _ in range(n_layers - 2):
+                        self.model.add(Bidirectional(LSTM(units, return_sequences=True)))
+                        if dropout > 0:
+                            self.model.add(Dropout(dropout))
+                    self.model.add(Bidirectional(LSTM(units, return_sequences=False)))
+                    if dropout > 0:
+                        self.model.add(Dropout(dropout))
+
+            else:
+                # "stacked_lstm" (default)
+                if n_layers <= 1:
+                    self.model.add(LSTM(units, input_shape=input_shape, return_sequences=False))
+                    if dropout > 0:
+                        self.model.add(Dropout(dropout))
+                else:
+                    self.model.add(LSTM(units, input_shape=input_shape, return_sequences=True))
+                    if dropout > 0:
+                        self.model.add(Dropout(dropout))
+                    for _ in range(n_layers - 2):
+                        self.model.add(LSTM(units, return_sequences=True))
+                        if dropout > 0:
+                            self.model.add(Dropout(dropout))
+                    self.model.add(LSTM(units, return_sequences=False))
+                    if dropout > 0:
+                        self.model.add(Dropout(dropout))
+
+            self.model.add(Dense(1))
+
+            optimizer = Adam(learning_rate=learning_rate)
+            self.model.compile(optimizer=optimizer, loss="mse")
+
+            # Guardar pesos iniciales para poder “resetear” rápido por ventana (sin reconstruir)
+            self._cached_signature = signature
+            self._cached_initial_weights = self.model.get_weights()
+
+        else:
+            # Mismos hiperparámetros/shape => reset rápido de pesos + recompilar optimizer (evita arrastre)
+            if self._cached_initial_weights is not None:
+                self.model.set_weights(self._cached_initial_weights)
+            self.model.compile(optimizer=Adam(learning_rate=learning_rate), loss="mse")
+
+        return self.model
+
+    
     def _create_dataset(self, X_data: np.ndarray, y_data: np.ndarray, look_back: int = 1) -> tuple[np.ndarray, np.ndarray]:
         """Crea secuencias para el LSTM."""
         look_back = int(look_back)
@@ -46,138 +142,222 @@ class LSTMModel(BaseModel):
             dataY.append(y_data[i, 0])
         return np.array(dataX), np.array(dataY)
 
-    def train_and_predict(
-        self,
-        y_train: pd.Series,
-        X_train: pd.DataFrame | None = None,
-        X_test: pd.DataFrame | None = None
-    ) -> list:
-        """Entrena un modelo LSTM y predice."""
+
+    def train_and_predict(self, y_train, X_train, X_test=None, cleanup: bool = True):
+        """
+        Entrena un LSTM y (opcionalmente) predice sobre X_test.
+
+        cleanup=True  -> recomendado en BACKTEST (libera memoria al final).
+        cleanup=False -> usado por train_and_save (mantiene self.model vivo para guardar).
+        """
         try:
-            # Parámetros (forzamos a int los que van a range / shapes)
-            window = int(self.params.get("window", 30))
-            units = int(self.params.get("units", 64))
+            # Import local para NO tocar tus imports globales
+            from sklearn.preprocessing import StandardScaler
+
+            # --- params (desde self.params) ---
+            window = int(self.params.get("window", 20))
+            units = int(self.params.get("units", 32))
+            n_layers = int(self.params.get("n_layers", 1))
             dropout = float(self.params.get("dropout", 0.2))
-            epochs = int(self.params.get("epochs", 50))
-            batch_size = int(self.params.get("batch_size", 32))
-            lr = float(self.params.get("learning_rate", 0.001))
+            batch_size = int(self.params.get("batch_size", 64))
+            epochs = int(self.params.get("epochs", 10))
+            learning_rate = float(self.params.get("learning_rate", 0.001))
+            early_stopping_patience = int(self.params.get("early_stopping_patience", 2))
             architecture = self.params.get("architecture", "stacked_lstm")
-            n_layers = int(self.params.get("n_layers", 2))
-            patience = self.params.get("early_stopping_patience", None)
-            validation_split = 0.1  # Usar 10% de los datos de entrenamiento para validación
-            self.window = window 
+            print_summary = bool(self.params.get("print_summary", False))
 
-            if X_train is None:
-                self.logger.error("LSTM requiere features (X_train). No se puede entrenar.")
-                # Si no hay X_test, devolvemos lista vacía para evitar len(None)
-                if X_test is not None:
-                    return [0] * len(X_test)
-                return []
+            # Limpieza antes de construir (rolling windows)
+            K.clear_session()
+            gc.collect()
 
-            # 1. Escalar features y target por separado
-            feature_scaler = MinMaxScaler(feature_range=(0, 1))
-            target_scaler = MinMaxScaler(feature_range=(0, 1))
+            # --- asegurar arrays ---
+            X_train = np.asarray(X_train)
+            y_train = np.asarray(y_train).reshape(-1, 1)
 
-            scaled_X = feature_scaler.fit_transform(X_train)
-            scaled_y = target_scaler.fit_transform(y_train.values.reshape(-1, 1))
-            
+            if X_train.ndim != 2:
+                raise ValueError(f"X_train debe ser 2D (n_samples, n_features). Recibido: {X_train.shape}")
+            if len(X_train) != len(y_train):
+                raise ValueError(f"X_train y y_train deben tener misma longitud. {len(X_train)} != {len(y_train)}")
+            if len(X_train) <= window:
+                raise ValueError(f"No hay suficientes observaciones ({len(X_train)}) para window={window}.")
+
+            # Cast a float32
+            X_train = X_train.astype(np.float32, copy=False)
+            y_train = y_train.astype(np.float32, copy=False)
+
+            # Protecciones (evita NaNs/inf que rompen scaler/fit)
+            if not np.isfinite(X_train).all():
+                self.logger.warning("LSTM: X_train tenía NaN/Inf. Se reemplazan por 0.")
+                X_train = np.nan_to_num(X_train, nan=0.0, posinf=0.0, neginf=0.0)
+            if not np.isfinite(y_train).all():
+                self.logger.warning("LSTM: y_train tenía NaN/Inf. Se reemplazan por 0.")
+                y_train = np.nan_to_num(y_train, nan=0.0, posinf=0.0, neginf=0.0)
+
+            # --- escalar ---
+            feature_scaler = StandardScaler()
+            target_scaler = StandardScaler()
+
+            X_scaled = feature_scaler.fit_transform(X_train)
+            y_scaled = target_scaler.fit_transform(y_train)
+
+            # Guardar scalers en el objeto (para save_model)
             self.feature_scaler = feature_scaler
             self.target_scaler = target_scaler
 
-            # 2. Crear secuencias
-            X, y = self._create_dataset(scaled_X, scaled_y, window)
-            if X.shape[0] == 0:
-                self.logger.warning(
-                    f"LSTM: No se pudieron crear secuencias con window={window}. Datos insuficientes."
-                )
-                if X_test is not None:
-                    return [0] * len(X_test)
-                return []
+            # --- crear secuencias ---
+            X_seq, y_seq = self._create_dataset(X_scaled, y_scaled, window)
 
-            # 3. Construir el modelo
-            n_features = X.shape[2]
-            self.model = Sequential()
+            if X_seq is None or len(X_seq) == 0:
+                raise ValueError(f"No se pudieron crear secuencias con window={window}. Revisa longitud de datos.")
 
-            # --- Lógica de construcción dinámica ---
-            if architecture == "bidirectional_lstm":
-                # Añadir capas bidireccionales
-                for i in range(n_layers):
-                    return_sequences = (i < n_layers - 1)  # True para todas menos la última
-                    if i == 0:
-                        self.model.add(
-                            Bidirectional(
-                                LSTM(units, return_sequences=return_sequences),
-                                input_shape=(window, n_features),
-                            )
-                        )
-                    else:
-                        self.model.add(
-                            Bidirectional(LSTM(units, return_sequences=return_sequences))
-                        )
-                    self.model.add(Dropout(dropout))
-            else:  # "stacked_lstm" por defecto
-                # Añadir capas LSTM apiladas
-                for i in range(n_layers):
-                    return_sequences = (i < n_layers - 1)  # True para todas menos la última
-                    if i == 0:
-                        self.model.add(
-                            LSTM(
+            X_seq = X_seq.astype(np.float32, copy=False)
+            y_seq = np.asarray(y_seq).reshape(-1, 1).astype(np.float32, copy=False)
+
+            # --- construir modelo (SIN self.build_model) ---
+            model = tf.keras.Sequential()
+            n_features = X_seq.shape[2]
+
+            def add_core_lstm_layer(is_first: bool, return_sequences: bool):
+                if architecture == "bidirectional_lstm":
+                    layer = tf.keras.layers.Bidirectional(
+                        tf.keras.layers.LSTM(
+                            units,
+                            return_sequences=return_sequences,
+                            recurrent_dropout=0.0
+                        ),
+                        input_shape=(window, n_features) if is_first else None
+                    )
+                    model.add(layer)
+                else:
+                    if is_first:
+                        model.add(
+                            tf.keras.layers.LSTM(
                                 units,
                                 return_sequences=return_sequences,
                                 input_shape=(window, n_features),
+                                recurrent_dropout=0.0
                             )
                         )
                     else:
-                        self.model.add(LSTM(units, return_sequences=return_sequences))
-                    self.model.add(Dropout(dropout))
+                        model.add(
+                            tf.keras.layers.LSTM(
+                                units,
+                                return_sequences=return_sequences,
+                                recurrent_dropout=0.0
+                            )
+                        )
 
-            self.model.add(Dense(units=1))  # Capa de salida final
+            # Capas LSTM
+            for i in range(max(1, n_layers)):
+                return_seq = (i < max(1, n_layers) - 1)
+                add_core_lstm_layer(is_first=(i == 0), return_sequences=return_seq)
+                if dropout and dropout > 0:
+                    model.add(tf.keras.layers.Dropout(dropout))
 
-            optimizer = Adam(learning_rate=lr)
-            self.model.compile(optimizer=optimizer, loss="mean_squared_error")
-            self.model.summary(print_fn=self.logger.info)  # Loguear la arquitectura del modelo
+            # Salida
+            model.add(tf.keras.layers.Dense(1))
 
-            # 4. Entrenar
+            opt = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+            model.compile(optimizer=opt, loss="mse")
+
+            self.model = model
+
+            if print_summary:
+                self.model.summary()
+
+            # Callbacks (si hay validation_split)
             callbacks = []
-            if patience:
-                # Añadir Early Stopping si está configurado
-                early_stop = EarlyStopping(
-                    monitor="val_loss", patience=int(patience), restore_best_weights=True
+            val_split = 0.1 if len(X_seq) >= 50 else 0.0
+            monitor_metric = "val_loss" if val_split > 0 else "loss"
+
+            if early_stopping_patience > 0:
+                callbacks.append(
+                    tf.keras.callbacks.EarlyStopping(
+                        monitor=monitor_metric,
+                        patience=early_stopping_patience,
+                        restore_best_weights=True
+                    )
                 )
-                callbacks.append(early_stop)
 
             self.model.fit(
-                X,
-                y,
+                X_seq, y_seq,
                 epochs=epochs,
                 batch_size=batch_size,
-                validation_split=validation_split,
-                callbacks=callbacks,
-                verbose=1,
-                shuffle=False,
+                validation_split=val_split,
+                shuffle=False,     # importante en series de tiempo
+                verbose=0,
+                callbacks=callbacks
             )
 
-            # 5. Predecir
-            # Tomar las últimas `window` filas de features del set de entrenamiento para predecir
-            last_sequence_features = scaled_X[-window:]
-            input_for_pred = last_sequence_features.reshape((1, window, n_features))
+            # --- predicción opcional ---
+            if X_test is None:
+                return np.array([])
 
-            prediction_scaled = self.model.predict(input_for_pred, verbose=0)
-            # Revertir la escala de la predicción usando el 'target_scaler'
-            prediction = target_scaler.inverse_transform(prediction_scaled)
+            X_test = np.asarray(X_test)
+            if X_test.ndim == 1:
+                X_test = X_test.reshape(1, -1)
+            if X_test.ndim != 2:
+                raise ValueError(f"X_test debe ser 2D. Recibido: {X_test.shape}")
 
-            # Replicar la predicción para el tamaño de X_test (normalmente 1 en backtest)
-            pred_list = prediction.flatten().tolist()
-            if X_test is not None:
-                return pred_list * len(X_test)
-            else:
-                return pred_list
+            X_test = X_test.astype(np.float32, copy=False)
+            if not np.isfinite(X_test).all():
+                self.logger.warning("LSTM: X_test tenía NaN/Inf. Se reemplazan por 0.")
+                X_test = np.nan_to_num(X_test, nan=0.0, posinf=0.0, neginf=0.0)
+
+            X_test_scaled = feature_scaler.transform(X_test)
+
+            # Predecir TODOS los puntos del test en 1 sola llamada (evita retracing excesivo)
+            X_concat = np.vstack([X_scaled, X_test_scaled])  # (train + test) en features
+            n_test = X_test_scaled.shape[0]
+
+            blocks = []
+            base = len(X_scaled)
+            for t in range(n_test):
+                start = base + t - window
+                if start < 0:
+                    # si por alguna razón falta historial, rellena con ceros
+                    pad = np.zeros((abs(start), X_concat.shape[1]), dtype=np.float32)
+                    block = np.vstack([pad, X_concat[0: base + t]])
+                    block = block[-window:]
+                else:
+                    block = X_concat[start:start + window]
+                blocks.append(block)
+
+            X_blocks = np.stack(blocks, axis=0).astype(np.float32, copy=False)  # (n_test, window, n_features)
+
+            yhat_scaled = self.model.predict(X_blocks, verbose=0, batch_size=min(batch_size, n_test))
+            yhat = target_scaler.inverse_transform(yhat_scaled.reshape(-1, 1)).ravel()
+
+            # Garantía anti-NaN
+            if not np.isfinite(yhat).all():
+                self.logger.warning("LSTM: predicción produjo NaN/Inf. Usando fallback con último y_train.")
+                fallback = float(y_train[-1, 0]) if len(y_train) else 0.0
+                yhat = np.full(shape=(n_test,), fill_value=fallback, dtype=np.float32)
+
+            return yhat
 
         except Exception as e:
-            self.logger.error(f"LSTM Error: {e}")
+            self.logger.error(f"Error entrenando/prediciendo LSTM: {e}")
+
+            # En BACKTEST: devuelve algo numérico para que NO exploten métricas por NaN
             if X_test is not None:
-                return [0] * len(X_test)
-            return []
+                try:
+                    n_test = len(X_test)
+                except Exception:
+                    n_test = 1
+                fallback = float(np.asarray(y_train).reshape(-1)[-1]) if y_train is not None and len(y_train) else 0.0
+                return np.full(shape=(n_test,), fill_value=fallback, dtype=np.float32)
+
+            # En TRAIN final (train_and_save) prefiero no "silenciar" el fallo si no hay test
+            if cleanup is False:
+                raise
+
+            return np.array([])
+
+        finally:
+            # 🔥 CLAVE: en backtest cleanup=True, pero en train_and_save cleanup=False
+            if cleanup:
+                self._cleanup_tf()
 
     
     def save_model(self, model_path: str | Path) -> None:
@@ -229,37 +409,28 @@ class LSTMModel(BaseModel):
         pred_scaled = self.model.predict(input_seq, verbose=0)
         pred = self.target_scaler.inverse_transform(pred_scaled)
         return pred.flatten().tolist()
-    def train_and_save(
-        self,
-        y_train: pd.Series,
-        X_train: pd.DataFrame | None,
-        model_name: str,
-        models_dir: str | Path | None = None,
-    ) -> None:
+    
+    def train_and_save(self, y_train, X_train, model_name: str = "lstm_best", models_dir: str = "outputs/models"):
         """
-        Entrena el LSTM con TODOS los datos disponibles y guarda
-        el modelo entrenado en disco como un .keras.
+        Entrena el LSTM final y lo guarda. Aquí NO se hace cleanup hasta después de guardar.
         """
-        if models_dir is None:
-            models_dir = Path("outputs") / "models"
-        else:
-            models_dir = Path(models_dir)
-        models_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            os.makedirs(models_dir, exist_ok=True)
+            model_path = os.path.join(models_dir, f"{model_name}.keras")
 
-        self.logger.info(
-            f"    -> Entrenando LSTM final con params={self.params} "
-            f"sobre {len(y_train)} observaciones..."
-        )
+            # Entrena pero NO limpia (para que self.model exista cuando se guarde)
+            _ = self.train_and_predict(y_train=y_train, X_train=X_train, X_test=None, cleanup=False)
 
-        # Reutilizamos la lógica de entrenamiento; no necesitamos X_test aquí
-        self.train_and_predict(
-            y_train=y_train,
-            X_train=X_train,
-            X_test=None,
-        )
+            # Guardar
+            self.save_model(model_path)
 
-        model_path = models_dir / f"{model_name}.keras"
-        self.save_model(model_path) 
-        self.logger.info(f"    -> Modelo LSTM final guardado en: {model_path}")
+            self.logger.info(f"✅ Modelo LSTM guardado en: {model_path}")
+            return model_path
 
-        return model_path
+        except Exception as e:
+            self.logger.error(f"Error en train_and_save LSTM: {e}")
+            raise
+
+        finally:
+            # Ahora sí: liberar memoria
+            self._cleanup_tf()

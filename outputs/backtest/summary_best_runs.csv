@@ -1,3 +1,0 @@
-model,mae,rmse,hit_rate,dm_stat,dm_pvalue,sharpe,sortino,max_drawdown,profit_factor,win_rate,payoff_ratio,n_test_points,n_trades,d,p,q
-ARIMA,0.002997,0.003957,82.5,-4.266679,2e-05,8.065003,21.998111,-0.004211,14.190041,82.5,3.010009,160,80,0.0,2.0,1.0
-RandomWalk,0.005137,0.006738,52.671756,4.635331,4e-06,-0.981235,-1.265277,-0.064894,0.83242,52.671756,0.747972,160,131,,,

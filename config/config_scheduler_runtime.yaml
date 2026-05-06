@@ -1,0 +1,44 @@
+# ==========================================================
+# CONFIG SOLO PARA SCHEDULER OPERATIVO
+# Uso:
+# - lanzar production + sync_trades en loop
+# - evitar que el scheduler dispare backtests automaticos
+# - dejar los backtests para ejecucion manual
+#
+# Comando recomendado:
+#   python scheduler_automation.py --config config/config_scheduler_runtime.yaml
+#
+# Nota:
+# - production y sync_trades usan la release activa porque
+#   production_use_optimized_config: true
+# - este archivo no esta pensado para correr main_pipeline.py
+#   en modo backtest; para eso usa config_backtest_ajustado.yaml
+# ==========================================================
+
+scheduler:
+  # Campo informativo. El scheduler se activa al ejecutar scheduler_automation.py.
+  enabled: true
+
+  # Dejar vacio para no usar cron.
+  cron:
+  backtest_cron:
+  production_cron:
+  sync_trades_cron:
+
+  # Backtest desactivado en este archivo: se corre manualmente.
+  backtest_interval_minutes:
+
+  # Produccion cada 5 minutos para M5.
+  production_interval_minutes: 5
+
+  # Reconciliacion y proteccion cada minuto.
+  sync_trades_interval_minutes: 1
+
+  # Desfase para no chocar con production.
+  sync_trades_offset_seconds: 30
+
+  timezone: "America/Bogota"
+  log_file: "logs/automation_scheduler.log"
+
+  # Production y sync_trades deben usar la release activa.
+  production_use_optimized_config: true

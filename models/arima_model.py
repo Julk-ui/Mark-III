@@ -16,6 +16,59 @@ from .base_model import BaseModel
 class ArimaModel(BaseModel):
     """Modelo ARIMA para predicción de series temporales."""
 
+    def _get_order(self) -> tuple[int, int, int]:
+        return (
+            int(self.params.get("p", 1)),
+            int(self.params.get("d", 0)),
+            int(self.params.get("q", 0)),
+        )
+
+    def _prepare_feature_frame(
+        self,
+        X: pd.DataFrame | None,
+        *,
+        fit_mode: bool = False,
+    ) -> pd.DataFrame:
+        """Alinea columnas de features para el componente de residuos."""
+        if X is None:
+            return pd.DataFrame()
+
+        X_df = pd.DataFrame(X).copy()
+
+        if fit_mode:
+            self.feature_names = list(X_df.columns)
+            return X_df
+
+        feature_names = list(getattr(self, "feature_names", []))
+        if not feature_names:
+            return X_df
+
+        for col in feature_names:
+            if col not in X_df.columns:
+                X_df[col] = 0.0
+
+        return X_df[feature_names]
+
+    def _fit_hybrid_components(
+        self,
+        y_train: pd.Series,
+        X_train: pd.DataFrame | None = None,
+    ):
+        """Entrena ARIMA y, si hay features, un Ridge sobre residuos."""
+        model = ARIMA(y_train, order=self._get_order())
+        model_fit = model.fit()
+
+        residual_model = None
+        X_train_df = self._prepare_feature_frame(X_train, fit_mode=True)
+        if not X_train_df.empty:
+            residuals = model_fit.resid
+            residual_model = Ridge(alpha=1.0)
+            residual_model.fit(X_train_df, residuals)
+        else:
+            self.feature_names = []
+
+        return model_fit, residual_model
+
     def train_and_predict(self, y_train: pd.Series, X_train: pd.DataFrame | None = None, X_test: pd.DataFrame | None = None) -> list:
         """Entrena un modelo ARIMA y predice."""
         if X_test is None:
@@ -26,44 +79,19 @@ class ArimaModel(BaseModel):
             return []
         
         try:
-            order = (
-                self.params.get("p", 1),
-                self.params.get("d", 0),
-                self.params.get("q", 0)
-            )
-            
-            # --- PASO 1: Entrenar ARIMA sobre la serie objetivo (y_train) ---
-            model = ARIMA(y_train, order=order)
-            model_fit = model.fit()
-            
-            # Obtener los residuos del entrenamiento
-            residuals = model_fit.resid
-            
-            # --- PASO 2: Entrenar un modelo de regresión para predecir los residuos ---
-            # Usamos Ridge para evitar overfitting con las features.
-            # El regresor aprenderá de las features que ARIMA ignora (X_train).
-            residual_model = Ridge(alpha=1.0)
-            residual_model.fit(X_train, residuals)
-            
-            # --- PASO 3: Realizar predicciones y combinarlas ---
-            
-            # Predicción base del modelo ARIMA
+            model_fit, residual_model = self._fit_hybrid_components(y_train, X_train)
             arima_prediction = model_fit.forecast(steps=len(X_test))
-            
-            # Predicción de los residuos futuros usando las features de test (X_test)
-            residual_prediction = residual_model.predict(X_test)
-            
-            # La predicción final es la suma de ambas
-            final_prediction = arima_prediction + residual_prediction
-            
-            return final_prediction.tolist()
-            # --- PREDICCIÓN SÓLO CON ARIMA ---
-            #arima_prediction = model_fit.forecast(steps=len(X_test))
 
-            #return arima_prediction.tolist()
+            final_prediction = arima_prediction
+            X_test_df = self._prepare_feature_frame(X_test, fit_mode=False)
+            if residual_model is not None and not X_test_df.empty:
+                residual_prediction = residual_model.predict(X_test_df)
+                final_prediction = arima_prediction + residual_prediction
+
+            return final_prediction.tolist()
         except Exception as e:
             self.logger.error(f"ARIMA Error: {e}")
-            return [0] * len(X_test) # Fallback a 0 si hay error
+        return [0] * len(X_test) # Fallback a 0 si hay error
         # === Persistencia del modelo ARIMA ===
 
     def train_and_save(
@@ -88,27 +116,24 @@ class ArimaModel(BaseModel):
             models_dir = Path(models_dir)
         models_dir.mkdir(parents=True, exist_ok=True)
 
-        order = (
-            int(self.params.get("p", 1)),
-            int(self.params.get("d", 0)),
-            int(self.params.get("q", 0)),
-        )
-
         self.logger.info(
             f"    -> Entrenando ARIMA final con params={self.params} "
             f"sobre {len(y_train)} observaciones..."
         )
 
-        # Entrenamos un ARIMA "limpio" sólo para producción (sin regresor de residuos)
-        model = ARIMA(y_train, order=order)
-        model_fit = model.fit()
+        model_fit, residual_model = self._fit_hybrid_components(y_train, X_train)
 
         # Guardamos también en el objeto
         self.model = model_fit
+        self.residual_model = residual_model
 
-        # Artefacto que se va a guardar (por si mañana queremos añadir más cosas)
         artifact = {
             "model": model_fit,
+            "residual_model": residual_model,
+            "feature_names": list(getattr(self, "feature_names", [])),
+            "params": dict(self.params or {}),
+            "target_name": getattr(y_train, "name", None),
+            "model_class": self.__class__.__name__,
         }
 
         model_path = models_dir / f"{model_name}.pkl"
@@ -120,10 +145,18 @@ class ArimaModel(BaseModel):
 
     def save_model(self, model_path: str | Path) -> None:
         """Guarda el modelo ya entrenado."""
-        if not hasattr(self, "model_") or self.model_ is None:
+        current_model = getattr(self, "model_", None) or getattr(self, "model", None)
+        if current_model is None:
             raise RuntimeError("ARIMA no tiene un modelo entrenado en memoria.")
         model_path = Path(model_path)
-        joblib.dump(self.model_, model_path)
+        artifact = {
+            "model": current_model,
+            "residual_model": getattr(self, "residual_model", None),
+            "feature_names": list(getattr(self, "feature_names", [])),
+            "params": dict(self.params or {}),
+            "model_class": self.__class__.__name__,
+        }
+        joblib.dump(artifact, model_path)
         self.logger.info(f"[ARIMA] Modelo guardado en: {model_path}")
 
     def load_model(self, model_path: str | Path) -> None:
@@ -176,6 +209,12 @@ class ArimaModel(BaseModel):
 
             self.model = candidate
 
+        self.residual_model = artifact.get("residual_model")
+        self.feature_names = list(artifact.get("feature_names", []))
+        loaded_params = artifact.get("params")
+        if loaded_params:
+            self.params = loaded_params
+
         # Compatibilidad con código viejo
         self.model_ = self.model
         self._is_fitted = True
@@ -185,10 +224,10 @@ class ArimaModel(BaseModel):
 
     def predict_loaded(self, X_all: pd.DataFrame | None = None) -> list[float]:
         """
-        Usa el modelo ARIMA ya cargado para predecir el próximo retorno.
+        Usa el artefacto ARIMA ya cargado para predecir el próximo retorno.
 
-        En la versión de producción actual, el ARIMA se entrenó sin exógenas,
-        así que X_all se ignora (se deja sólo por compatibilidad de interfaz).
+        Si el artefacto incluye el regresor de residuos, también incorpora la
+        última fila de features para reconstruir la predicción híbrida.
         """
         # Comprobamos que el modelo está cargado
         if getattr(self, "model", None) is None:
@@ -199,18 +238,57 @@ class ArimaModel(BaseModel):
 
         # Si quieres, dejamos un log por si X_all viene vacío
         if X_all is None or (hasattr(X_all, "empty") and X_all.empty):
-            self.logger.info("[ARIMA] X_all vacío o None en producción; se usará ARIMA puro sin exógenas.")
+            self.logger.info("[ARIMA] X_all vacío o None en producción; se usará ARIMA puro sin componente de residuos.")
         else:
-            self.logger.debug(f"[ARIMA] Producción: X_all recibido con shape={X_all.shape}, "
-                            "pero se ignora para ARIMA puro.")
+            self.logger.debug(f"[ARIMA] Producción: X_all recibido con shape={X_all.shape}.")
 
         # Predicción a 1 paso adelante
         try:
             pred = self.model.forecast(steps=1)
+            pred_value = float(pred.iloc[0] if hasattr(pred, "iloc") else pred[0])
+            residual_model = getattr(self, "residual_model", None)
+            if residual_model is not None and X_all is not None and len(X_all) > 0:
+                X_last = self._prepare_feature_frame(pd.DataFrame(X_all).tail(1), fit_mode=False)
+                if not X_last.empty:
+                    pred_value += float(residual_model.predict(X_last)[0])
         except Exception as e:
             self.logger.error(f"Error en ARIMA.predict_loaded: {e}")
             raise
 
         # Devolvemos una lista de floats
-        return [float(v) for v in pred]
+        return [pred_value]
+
+    def predict_loaded_with_context(
+        self,
+        X_all: pd.DataFrame | None = None,
+        y_all: pd.Series | None = None,
+    ) -> list[float]:
+        """
+        Reajusta el híbrido ARIMA + Ridge con la serie más reciente disponible.
+
+        Esto alinea producción con la lógica del backtest: ARIMA modela la dinámica
+        temporal y el Ridge sobre residuos incorpora las features actuales.
+        """
+        if y_all is None or len(y_all) == 0:
+            return self.predict_loaded(X_all)
+
+        try:
+            model_fit, residual_model = self._fit_hybrid_components(y_all, X_all)
+            pred = model_fit.forecast(steps=1)
+            pred_value = float(pred.iloc[0] if hasattr(pred, "iloc") else pred[0])
+
+            X_last = self._prepare_feature_frame(pd.DataFrame(X_all).tail(1), fit_mode=False)
+            if residual_model is not None and not X_last.empty:
+                pred_value += float(residual_model.predict(X_last)[0])
+
+            self.model = model_fit
+            self.model_ = model_fit
+            self.residual_model = residual_model
+            self._is_fitted = True
+            return [pred_value]
+        except Exception as exc:
+            self.logger.warning(
+                f"[ARIMA] No se pudo reajustar con contexto live; se usa fallback del artefacto guardado. Error: {exc}"
+            )
+            return self.predict_loaded(X_all)
 

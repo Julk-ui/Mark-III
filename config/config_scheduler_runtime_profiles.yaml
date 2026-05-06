@@ -1,0 +1,44 @@
+# ==========================================================
+# SCHEDULER OPERATIVO PARA PERFILES MULTIPLES
+# Uso:
+# - correr production + sync_trades en loop
+# - elegir uno o varios perfiles ya backtesteados
+# - dejar backtests para ejecucion manual
+#
+# Comando recomendado:
+#   python scheduler_automation.py --config config/config_scheduler_runtime_profiles.yaml
+#
+# Nota:
+# - production usa la release activa de cada perfil
+# - si defines varios perfiles, el scheduler los separa unos segundos
+# ==========================================================
+
+scheduler:
+  enabled: true
+
+  cron:
+  backtest_cron:
+  production_cron:
+  sync_trades_cron:
+
+  backtest_interval_minutes:
+  production_interval_minutes: 5
+  sync_trades_interval_minutes: 1
+
+  # Deja uno o varios perfiles aqui.
+  # Opciones tipicas:
+  # - aggressive
+  # - balanced
+  # - conservative
+  production_profiles:
+    - balanced
+
+  # Separa el lanzamiento de cada perfil para no chocar entre si.
+  production_profile_spacing_seconds: 20
+
+  # Desfase para que sync_trades no choque con production.
+  sync_trades_offset_seconds: 30
+
+  timezone: "America/Bogota"
+  log_file: "logs/automation_scheduler.log"
+  production_use_optimized_config: true

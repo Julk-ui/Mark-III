@@ -1,0 +1,126 @@
+# Configuración ejemplo para integrar modelos nuevos, score de confianza y régimen no supervisado
+
+validation:
+  mode: last_n
+  n: 0
+
+features:
+  returns:
+    enabled: true
+    periods: [1, 5, 10]
+  technical_indicators:
+    enabled: true
+    indicators: [sma_20, sma_50, ema_12, ema_26, rsi_14, macd, bollinger_bands, atr_14]
+  lag_features:
+    enabled: true
+    columns: ["Close", "Volume"]
+    lags: [1, 2, 3, 5, 10]
+
+unsupervised:
+  enabled: true
+  method: kmeans
+  n_clusters: 3
+  add_one_hot: true
+
+models:
+  - name: Momentum
+    enabled: true
+    param_grid:
+      lookback: [1, 3, 5]
+
+  - name: ARIMA
+    enabled: true
+    param_grid:
+      p: [1, 2, 3]
+      d: [0, 1]
+      q: [0, 1]
+
+  - name: PROPHET
+    enabled: true
+    param_grid:
+      changepoint_prior_scale: [0.01, 0.05]
+      seasonality_prior_scale: [1.0, 10.0]
+      seasonality_mode: ["additive", "multiplicative"]
+      weekly_seasonality: [true]
+      yearly_seasonality: [false]
+      daily_seasonality: [false]
+      use_lagged_regressors: [true]
+
+  - name: LSTM
+    enabled: false
+    param_grid:
+      window: [50]
+      learning_rate: [0.001]
+      architecture: ["stacked_lstm"]
+      n_layers: [1]
+      units: [32]
+      dropout: [0.2]
+      epochs: [30]
+      batch_size: [64]
+      early_stopping_patience: [5]
+
+  - name: RandomForestRegressor
+    enabled: true
+    param_grid:
+      n_estimators: [200, 400]
+      max_depth: [4, 6]
+      min_samples_leaf: [5, 10]
+
+  - name: HistGradientBoosting
+    enabled: true
+    param_grid:
+      learning_rate: [0.03, 0.05]
+      max_depth: [4, 6]
+      max_iter: [200, 300]
+      min_samples_leaf: [10, 20]
+
+backtest:
+  enabled: true
+  initial_train: 900
+  step: 15
+  horizon: 1
+  target: "ReturnFwd_1"
+  pip_size: 0.0001
+  threshold_pips: 10
+  plot_scale: "price"
+  periods_per_year: 252
+  metrics:
+    - mae
+    - rmse
+    - hit_rate
+    - accuracy
+    - f1_score
+    - precision
+    - recall
+    - dm_stat
+    - dm_pvalue
+    - sharpe
+    - sortino
+    - calmar
+    - max_drawdown
+    - profit_factor
+    - win_rate
+    - payoff_ratio
+    - consistency_ratio
+    - avg_trade_return
+    - n_test_points
+    - n_trades
+
+trading:
+  min_pips_signal: 10.0
+  min_confidence: 0.60
+  enable_confidence_filter: true
+
+scheduler:
+  enabled: true
+  cron: "0 7 * * 1"
+  timezone: "America/Bogota"
+  log_file: "logs/backtest_scheduler.log"
+
+model_selection:
+  primary_metric: "sharpe"
+  primary_greater_is_better: true
+  secondary_metric: "hit_rate"
+  secondary_greater_is_better: true
+  min_trades: 20
+  min_test_points: 50

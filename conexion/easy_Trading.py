@@ -3,7 +3,7 @@
 # ==========================================
 import MetaTrader5 as mt5
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from urllib.request import urlopen, Request
 from bs4 import BeautifulSoup
@@ -40,6 +40,7 @@ class Basic_funcs:
         self.password = str(password) if password is not None else None
         self.server = str(server) if server is not None else None
         self.path = path
+        self.mt5 = mt5
         self._connected = False
         self._connect()
 
@@ -112,7 +113,7 @@ class Basic_funcs:
     # ---------- órdenes ----------
     def modify_orders(self, symb: str, ticket: int,
                       stop_loss: float = None, take_profit: float = None,
-                      type_order=mt5.ORDER_TYPE_BUY) -> None:
+                      type_order=mt5.ORDER_TYPE_BUY) -> dict:
         req = {
             'action': mt5.TRADE_ACTION_SLTP,
             'symbol': symb,
@@ -125,7 +126,21 @@ class Basic_funcs:
             req['sl'] = stop_loss
         if take_profit is not None:
             req['tp'] = take_profit
-        mt5.order_send(req)
+        res = mt5.order_send(req)
+        if res is None:
+            return {
+                "success": False,
+                "retcode": None,
+                "comment": f"order_send retornó None: {mt5.last_error()}",
+                "request": req,
+            }
+        raw = res._asdict()
+        return {
+            "success": raw.get("retcode") == mt5.TRADE_RETCODE_DONE,
+            "retcode": raw.get("retcode"),
+            "comment": raw.get("comment"),
+            "request": req,
+        }
 
     def open_operations(self, par: str, volumen: float, tipo_operacion,
                         nombre_bot: str, sl: float = None, tp: float = None) -> None:
@@ -146,6 +161,326 @@ class Basic_funcs:
             print(f"❌ Error al enviar orden: {res.retcode}, mensaje: {res.comment}")
         else:
             print(f"✅ Orden ejecutada. Ticket: {res.order}")
+
+    def get_account_info(self) -> dict:
+        """Devuelve información resumida de la cuenta conectada."""
+        self._connect()
+        info = mt5.account_info()
+        if info is None:
+            return {}
+        return info._asdict()
+
+    def get_symbol_tick(self, symbol: str) -> Optional[dict]:
+        """Devuelve bid/ask/last del símbolo si está disponible."""
+        self._connect()
+        mt5.symbol_select(symbol, True)
+        tick = mt5.symbol_info_tick(symbol)
+        if tick is None:
+            return None
+        return tick._asdict()
+
+    def get_symbol_spec(self, symbol: str) -> dict:
+        """Devuelve especificaciones útiles del símbolo para validar órdenes."""
+        self._connect()
+        mt5.symbol_select(symbol, True)
+        info = mt5.symbol_info(symbol)
+        if info is None:
+            return {}
+        return {
+            "symbol": symbol,
+            "digits": int(getattr(info, "digits", 5) or 5),
+            "point": float(getattr(info, "point", 0.0) or 0.0),
+            "trade_stops_level": int(getattr(info, "trade_stops_level", 0) or 0),
+            "trade_freeze_level": int(getattr(info, "trade_freeze_level", 0) or 0),
+            "volume_min": float(getattr(info, "volume_min", 0.01) or 0.01),
+            "volume_step": float(getattr(info, "volume_step", 0.01) or 0.01),
+            "trade_contract_size": float(getattr(info, "trade_contract_size", 0.0) or 0.0),
+        }
+
+    def _normalize_price(self, price: float | None, digits: int) -> float | None:
+        if price is None:
+            return None
+        return round(float(price), int(max(digits, 0)))
+
+    def _sanitize_protection_levels(
+        self,
+        side: str,
+        reference_price: float,
+        sl: float | None,
+        tp: float | None,
+        symbol_spec: dict,
+    ) -> dict:
+        digits = int(symbol_spec.get("digits", 5) or 5)
+        point = float(symbol_spec.get("point", 0.0) or 0.0)
+        point = point if point > 0 else 0.0001
+        stops_level = int(symbol_spec.get("trade_stops_level", 0) or 0)
+        min_distance = max(stops_level * point, point)
+
+        side_upper = str(side).upper()
+        clean_sl = None if sl is None else float(sl)
+        clean_tp = None if tp is None else float(tp)
+
+        if side_upper == "BUY":
+            if clean_sl is not None:
+                clean_sl = min(clean_sl, reference_price - min_distance)
+                if clean_sl >= reference_price:
+                    clean_sl = reference_price - min_distance
+            if clean_tp is not None:
+                clean_tp = max(clean_tp, reference_price + min_distance)
+                if clean_tp <= reference_price:
+                    clean_tp = reference_price + min_distance
+        else:
+            if clean_sl is not None:
+                clean_sl = max(clean_sl, reference_price + min_distance)
+                if clean_sl <= reference_price:
+                    clean_sl = reference_price + min_distance
+            if clean_tp is not None:
+                clean_tp = min(clean_tp, reference_price - min_distance)
+                if clean_tp >= reference_price:
+                    clean_tp = reference_price - min_distance
+
+        return {
+            "sl": self._normalize_price(clean_sl, digits),
+            "tp": self._normalize_price(clean_tp, digits),
+            "min_distance": float(min_distance),
+            "digits": digits,
+            "point": point,
+            "trade_stops_level": stops_level,
+        }
+
+    def get_position_by_ticket(self, ticket: int) -> Optional[dict]:
+        """Busca una posición abierta por ticket."""
+        self._connect()
+        try:
+            positions = mt5.positions_get(ticket=int(ticket))
+        except TypeError:
+            positions = None
+
+        if positions:
+            return positions[0]._asdict()
+
+        df = self.get_all_positions()
+        if df.empty or "ticket" not in df.columns:
+            return None
+
+        matches = df[pd.to_numeric(df["ticket"], errors="coerce").fillna(-1).astype(int) == int(ticket)]
+        if matches.empty:
+            return None
+        return matches.iloc[0].to_dict()
+
+    def ensure_position_protection(
+        self,
+        *,
+        symbol: str,
+        position_ticket: int,
+        side: str,
+        sl: float | None,
+        tp: float | None,
+    ) -> dict:
+        """Asegura que la posición abierta quede protegida con SL/TP."""
+        symbol_spec = self.get_symbol_spec(symbol)
+        tick = self.get_symbol_tick(symbol)
+        if not symbol_spec or tick is None:
+            return {
+                "success": False,
+                "comment": f"No se pudo obtener spec/tick para {symbol}",
+                "applied_sl": sl,
+                "applied_tp": tp,
+            }
+
+        side_upper = str(side).upper()
+        reference_price = float(tick["ask"] if side_upper == "BUY" else tick["bid"])
+        sanitized = self._sanitize_protection_levels(
+            side=side_upper,
+            reference_price=reference_price,
+            sl=sl,
+            tp=tp,
+            symbol_spec=symbol_spec,
+        )
+        order_type = mt5.ORDER_TYPE_BUY if side_upper == "BUY" else mt5.ORDER_TYPE_SELL
+        result = self.modify_orders(
+            symb=symbol,
+            ticket=int(position_ticket),
+            stop_loss=sanitized["sl"],
+            take_profit=sanitized["tp"],
+            type_order=order_type,
+        )
+        return {
+            "success": bool(result.get("success")),
+            "comment": result.get("comment"),
+            "retcode": result.get("retcode"),
+            "applied_sl": sanitized["sl"],
+            "applied_tp": sanitized["tp"],
+            "min_distance": sanitized["min_distance"],
+        }
+
+    def open_market_order(
+        self,
+        symbol: str,
+        volume: float,
+        side: str,
+        comment: str,
+        sl: float | None = None,
+        tp: float | None = None,
+        deviation: int = 20,
+        magic: int = 202204,
+    ) -> dict:
+        """Abre una orden de mercado y devuelve un resultado normalizado."""
+        self._connect()
+
+        side_upper = str(side).upper()
+        if side_upper not in {"BUY", "SELL"}:
+            raise ValueError(f"Side no soportado: {side}")
+
+        mt5.symbol_select(symbol, True)
+        tick = mt5.symbol_info_tick(symbol)
+        symbol_spec = self.get_symbol_spec(symbol)
+        if tick is None:
+            return {
+                "success": False,
+                "retcode": None,
+                "comment": f"No hay tick disponible para {symbol}",
+                "order": None,
+                "deal": None,
+                "position_id": None,
+                "price": None,
+            }
+
+        order_type = mt5.ORDER_TYPE_BUY if side_upper == "BUY" else mt5.ORDER_TYPE_SELL
+        digits = int(symbol_spec.get("digits", 5) or 5)
+        price = self._normalize_price(
+            float(tick.ask if side_upper == "BUY" else tick.bid),
+            digits,
+        )
+        protection = self._sanitize_protection_levels(
+            side=side_upper,
+            reference_price=float(price),
+            sl=sl,
+            tp=tp,
+            symbol_spec=symbol_spec,
+        )
+
+        request = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": symbol,
+            "volume": float(volume),
+            "type": order_type,
+            "price": price,
+            "deviation": int(deviation),
+            "magic": int(magic),
+            "comment": str(comment)[:31],
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_FOK,
+        }
+        if protection["sl"] is not None:
+            request["sl"] = float(protection["sl"])
+        if protection["tp"] is not None:
+            request["tp"] = float(protection["tp"])
+
+        res = mt5.order_send(request)
+        if res is None:
+            return {
+                "success": False,
+                "retcode": None,
+                "comment": f"order_send retornó None: {mt5.last_error()}",
+                "order": None,
+                "deal": None,
+                "position_id": None,
+                "price": price,
+            }
+
+        raw = res._asdict()
+        invalid_stops_code = getattr(mt5, "TRADE_RETCODE_INVALID_STOPS", 10016)
+
+        if raw.get("retcode") == invalid_stops_code and (sl is not None or tp is not None):
+            retry_request = dict(request)
+            retry_request.pop("sl", None)
+            retry_request.pop("tp", None)
+            retry_res = mt5.order_send(retry_request)
+            if retry_res is not None:
+                raw = retry_res._asdict()
+                request = retry_request
+
+        position_id = None
+        position = None
+
+        try:
+            deals = mt5.history_deals_get(
+                datetime.now() - timedelta(hours=12),
+                datetime.now() + timedelta(days=1),
+            )
+            if deals:
+                for deal in deals:
+                    deal_dict = deal._asdict()
+                    if deal_dict.get("ticket") == raw.get("deal"):
+                        position_id = deal_dict.get("position_id")
+                        break
+        except Exception:
+            position_id = None
+
+        if position_id is not None:
+            position = self.get_position_by_ticket(int(position_id))
+
+        if position is None:
+            try:
+                positions = mt5.positions_get(symbol=symbol)
+                if positions:
+                    candidates = [p._asdict() for p in positions]
+                    side_value = 0 if side_upper == "BUY" else 1
+                    candidates = [p for p in candidates if int(p.get("type", -1)) == side_value]
+                    if candidates:
+                        candidates.sort(key=lambda p: (p.get("time") or 0, p.get("ticket") or 0))
+                        position = candidates[-1]
+                        position_id = int(position.get("ticket"))
+            except Exception:
+                position = None
+
+        protection_result = {
+            "success": False,
+            "comment": "No se aplicó verificación de protección.",
+            "applied_sl": protection["sl"],
+            "applied_tp": protection["tp"],
+            "retcode": None,
+        }
+
+        if raw.get("retcode") == mt5.TRADE_RETCODE_DONE and position_id is not None:
+            current_sl = None if position is None else float(position.get("sl") or 0.0)
+            current_tp = None if position is None else float(position.get("tp") or 0.0)
+            sl_missing = protection["sl"] is not None and (not current_sl or abs(current_sl - float(protection["sl"])) > 1e-9)
+            tp_missing = protection["tp"] is not None and (not current_tp or abs(current_tp - float(protection["tp"])) > 1e-9)
+            if sl_missing or tp_missing:
+                protection_result = self.ensure_position_protection(
+                    symbol=symbol,
+                    position_ticket=int(position_id),
+                    side=side_upper,
+                    sl=protection["sl"],
+                    tp=protection["tp"],
+                )
+            else:
+                protection_result = {
+                    "success": True,
+                    "comment": "SL/TP presentes en la posición.",
+                    "applied_sl": current_sl,
+                    "applied_tp": current_tp,
+                    "retcode": raw.get("retcode"),
+                }
+
+        return {
+            "success": raw.get("retcode") == mt5.TRADE_RETCODE_DONE,
+            "retcode": raw.get("retcode"),
+            "comment": raw.get("comment"),
+            "order": raw.get("order"),
+            "deal": raw.get("deal"),
+            "position_id": position_id if position_id is not None else raw.get("order"),
+            "price": price,
+            "request": request,
+            "requested_sl": sl,
+            "requested_tp": tp,
+            "sent_sl": protection["sl"],
+            "sent_tp": protection["tp"],
+            "protection": protection_result,
+            "symbol_spec": symbol_spec,
+        }
 
     def obtener_ordenes_pendientes(self) -> pd.DataFrame:
         try:
@@ -202,6 +537,64 @@ class Basic_funcs:
             return pd.DataFrame(list(pos), columns=pos[0]._asdict().keys())
         except Exception:
             return pd.DataFrame()
+
+    def get_history_deals(
+        self,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
+        symbol: Optional[str] = None,
+        magic: Optional[int] = None,
+        position_id: Optional[int] = None,
+    ) -> pd.DataFrame:
+        """Obtiene deals históricos normalizados desde MT5."""
+        self._connect()
+
+        # El servidor MT5 puede estar adelantado respecto al reloj local.
+        # Si no se expande la ventana, los deals mas recientes pueden quedar fuera.
+        date_to = date_to or (datetime.now() + timedelta(days=1))
+        date_from = date_from or (date_to - timedelta(days=30))
+
+        deals = mt5.history_deals_get(date_from, date_to)
+        if not deals:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(list(deals), columns=deals[0]._asdict().keys())
+
+        if "time" in df.columns:
+            df["time"] = pd.to_datetime(df["time"], unit="s", utc=True).dt.tz_convert(None)
+
+        if symbol is not None and "symbol" in df.columns:
+            df = df[df["symbol"] == symbol]
+
+        if magic is not None and "magic" in df.columns:
+            df = df[pd.to_numeric(df["magic"], errors="coerce").fillna(0).astype(int) == int(magic)]
+
+        if position_id is not None and "position_id" in df.columns:
+            df = df[pd.to_numeric(df["position_id"], errors="coerce").fillna(-1).astype(int) == int(position_id)]
+
+        entry_map = {0: "IN", 1: "OUT", 2: "INOUT", 3: "OUT_BY"}
+        reason_map = {
+            0: "CLIENT",
+            1: "MOBILE",
+            2: "WEB",
+            3: "EXPERT",
+            4: "SL",
+            5: "TP",
+            6: "SO",
+            7: "ROLLOVER",
+            8: "VMARGIN",
+            9: "SPLIT",
+        }
+
+        if "entry" in df.columns:
+            df["entry_label"] = df["entry"].map(entry_map).fillna(df["entry"])
+        if "reason" in df.columns:
+            df["reason_label"] = df["reason"].map(reason_map).fillna(df["reason"])
+
+        if "time" in df.columns:
+            df = df.sort_values("time")
+
+        return df.reset_index(drop=True)
 
     def send_to_breakeven(self, df_pos: pd.DataFrame, perc_rec: float) -> None:
         """

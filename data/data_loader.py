@@ -30,7 +30,11 @@ class DataLoader:
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.mt5_client: Optional[Basic_funcs] = None
-        
+    
+    def is_connected(self) -> bool:
+        """Indica si hay un cliente MT5 instanciado."""
+        return self.mt5_client is not None
+    
     def connect(self) -> None:
         """Establece conexión con MT5"""
         if self.mt5_client is None:
@@ -168,6 +172,10 @@ class DataLoader:
                 "point": info.point,
                 "digits": info.digits,
                 "spread": info.spread,
+                "trade_stops_level": getattr(info, "trade_stops_level", 0),
+                "trade_freeze_level": getattr(info, "trade_freeze_level", 0),
+                "trade_tick_size": getattr(info, "trade_tick_size", 0.0),
+                "trade_tick_value": getattr(info, "trade_tick_value", 0.0),
                 "trade_contract_size": info.trade_contract_size,
                 "volume_min": info.volume_min,
                 "volume_max": info.volume_max,

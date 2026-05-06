@@ -1,0 +1,10 @@
+{
+  "release_id": "20260505_065424",
+  "activated_at": "2026-05-05T07:03:24",
+  "champion_model": "PROPHET",
+  "strategy_profile": "aggressive_light",
+  "config_path": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\config\\config_optimizado_20260505_065424.yaml",
+  "models_dir": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\outputs\\models\\releases\\20260505_065424",
+  "summary_csv_path": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\outputs\\backtest\\summary_best_runs_20260505_065424.csv",
+  "summary_xlsx_path": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\outputs\\backtest\\summary_best_runs_20260505_065424.xlsx"
+}

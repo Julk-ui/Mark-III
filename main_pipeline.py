@@ -8,23 +8,31 @@ Integra todos los módulos: Conexión, Limpieza, EDA y Modelos.
 
 from __future__ import annotations
 import debugpy
-import matplotlib.pyplot as plt
-debugpy.listen(("localhost", 5680))
-print("Esperando debugger… Conéctate desde VS Code.")
-debugpy.wait_for_client()
 import sys, os
+import matplotlib
+matplotlib.use("Agg")   # <- importante en Windows para evitar Tkinter
+import matplotlib.pyplot as plt
 from typing import Any
+if os.getenv("DEBUGPY", "0") == "1":
+    debugpy.listen(("localhost", 5680))
+    print("Esperando debugger… Conéctate desde VS Code.")
+    debugpy.wait_for_client()
 
 # --- Supresión de Warnings de librerías ---
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
+import json
 import yaml
 import argparse
+import shutil
+import time
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 import pandas as pd
 import numpy as np
+from pandas.errors import EmptyDataError
 from itertools import product
 from copy import deepcopy
 from sklearn.model_selection import ParameterGrid
@@ -32,12 +40,14 @@ from sklearn.model_selection import ParameterGrid
 # Imports de módulos propios
 from data.data_loader import DataLoader, DataValidator
 from data.data_cleaner import DataCleaner, FeatureEngineer
-from utils.metrics import calculate_all_metrics
+from utils.metrics_v2 import calculate_all_metrics
 from models.arima_model import ArimaModel
 from models.prophet_model import ProphetModel
 from models.lstm_model import LSTMModel # Asegúrate que este archivo exista
 from models.random_walk_model import MomentumModel, RandomWalkModel
-# Agrega aquí otros modelos que crees
+from models.tree_models import RandomForestRegressorModel, HistGradientBoostingRegressorModel
+from models.regime_model import MarketRegimeClusterer
+from utils.decision_utils import build_signal_from_prediction
 
 from eda.exploratory_analysis import ExploratoryAnalysis
 
@@ -57,12 +67,1406 @@ class TradingPipeline:
         self._setup_directories()
         self._df_features_last_backtest = None
         self._global_champion = None
+        self._backtest_run_label: str | None = None
+        self._latest_backtest_summary_paths: dict[str, Path | None] = {
+            "csv": None,
+            "xlsx": None,
+        }
+        self._active_mode: str | None = None
         
         # Componentes
         self.data_loader: DataLoader | None = None
         self.data_cleaner: DataCleaner | None = None
         self.feature_engineer: FeatureEngineer | None = None
         self.eda: ExploratoryAnalysis | None = None
+        self.regime_clusterer: MarketRegimeClusterer | None = None
+
+    def _get_model_selection_settings(self) -> dict[str, Any]:
+        """Normaliza la configuración usada para elegir los mejores runs."""
+        selection_cfg = self.config.get("model_selection", {}) or {}
+        return {
+            "primary_metric": selection_cfg.get("primary_metric", "hit_rate"),
+            "primary_greater_is_better": bool(selection_cfg.get("primary_greater_is_better", True)),
+            "secondary_metric": selection_cfg.get("secondary_metric", "rmse"),
+            "secondary_greater_is_better": bool(selection_cfg.get("secondary_greater_is_better", False)),
+            "min_trades": int(selection_cfg.get("min_trades", 0) or 0),
+            "min_test_points": int(selection_cfg.get("min_test_points", 0) or 0),
+        }
+
+    def _select_best_run(
+        self,
+        df_runs: pd.DataFrame,
+        model_name: str | None = None,
+        log_prefix: str = "",
+    ) -> pd.Series | None:
+        """Selecciona el mejor run con la misma lógica usada en todo el pipeline."""
+        if df_runs is None or df_runs.empty:
+            return None
+
+        selection = self._get_model_selection_settings()
+        primary = selection["primary_metric"]
+        primary_greater = selection["primary_greater_is_better"]
+        secondary = selection["secondary_metric"]
+        secondary_greater = selection["secondary_greater_is_better"]
+        min_trades = selection["min_trades"]
+        min_test_points = selection["min_test_points"]
+
+        ranked = df_runs.copy()
+
+        for col in {primary, secondary, "rmse", "hit_rate", "n_trades", "n_test_points"}:
+            if col in ranked.columns:
+                ranked[col] = pd.to_numeric(ranked[col], errors="coerce")
+
+        filtered = ranked
+        applied_filters: list[str] = []
+
+        if min_trades > 0 and "n_trades" in filtered.columns:
+            filtered = filtered[filtered["n_trades"].fillna(0) >= min_trades]
+            applied_filters.append(f"n_trades >= {min_trades}")
+
+        if min_test_points > 0 and "n_test_points" in filtered.columns:
+            filtered = filtered[filtered["n_test_points"].fillna(0) >= min_test_points]
+            applied_filters.append(f"n_test_points >= {min_test_points}")
+
+        if not filtered.empty:
+            ranked = filtered
+        elif applied_filters:
+            scope = model_name or "corridas"
+            self.logger.warning(
+                f"{log_prefix}{scope}: no hay runs que cumplan {' y '.join(applied_filters)}. "
+                "Se seleccionará sin esos filtros."
+            )
+
+        sort_cols: list[str] = []
+        ascending: list[bool] = []
+
+        if primary in ranked.columns:
+            sort_cols.append(primary)
+            ascending.append(not primary_greater)
+
+        if secondary and secondary in ranked.columns and secondary != primary:
+            sort_cols.append(secondary)
+            ascending.append(not secondary_greater)
+
+        if "n_trades" in ranked.columns and "n_trades" not in sort_cols:
+            sort_cols.append("n_trades")
+            ascending.append(False)
+
+        if not sort_cols:
+            if "rmse" in ranked.columns:
+                sort_cols = ["rmse"]
+                ascending = [True]
+            else:
+                return ranked.iloc[0]
+
+        ranked = ranked.sort_values(by=sort_cols, ascending=ascending, na_position="last")
+        return ranked.iloc[0]
+
+    def _start_backtest_run(self) -> str:
+        """Inicializa un identificador uniforme para los artefactos del run."""
+        self._backtest_run_label = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.logger.info(f"Backtest run_id: {self._backtest_run_label}")
+        return self._backtest_run_label
+
+    def _ensure_backtest_run_label(self) -> str:
+        """Devuelve el run_id actual o crea uno si todavía no existe."""
+        if not self._backtest_run_label:
+            return self._start_backtest_run()
+        return self._backtest_run_label
+
+    def _get_backtest_output_dir(self) -> Path:
+        """Directorio estándar de salidas de backtest."""
+        output_dir = Path(self.config.get("output", {}).get("dir", "outputs")) / "backtest"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        return output_dir
+
+    def _build_backtest_archive_path(self, path: Path) -> Path:
+        """Construye una ruta versionada con timestamp para el mismo artefacto."""
+        run_label = self._ensure_backtest_run_label()
+        return path.with_name(f"{path.stem}_{run_label}{path.suffix}")
+
+    def _archive_backtest_artifact(self, path: Path) -> Path | None:
+        """Crea una copia archivada del artefacto sin romper la ruta estable."""
+        if not path.exists():
+            return None
+
+        archive_path = self._build_backtest_archive_path(path)
+        shutil.copy2(path, archive_path)
+        self.logger.info(f"    Copia archivada con fecha: {archive_path}")
+        return archive_path
+
+    def _get_config_dir(self) -> Path:
+        """Directorio donde viven los YAML del pipeline."""
+        return Path(self.config_path).resolve().parent
+
+    def _get_strategy_profile_name(self) -> str | None:
+        """Nombre logico del perfil de estrategia actual, si existe."""
+        profile_cfg = self.config.get("strategy_profile", {}) or {}
+        raw_name = profile_cfg.get("name") or profile_cfg.get("profile_name")
+        if raw_name is None:
+            return None
+        name = str(raw_name).strip()
+        return name or None
+
+    def _normalize_profile_label(self, profile_name: str | None) -> str | None:
+        """Normaliza un label de perfil para usarlo en nombres de archivo."""
+        if not profile_name:
+            return None
+        cleaned = "".join(
+            ch.lower() if ch.isalnum() else "_"
+            for ch in str(profile_name).strip()
+        )
+        cleaned = "_".join(part for part in cleaned.split("_") if part)
+        return cleaned or None
+
+    def _get_models_output_dir(self) -> Path:
+        """Directorio raíz de modelos persistidos."""
+        models_dir = Path(self.config.get("output", {}).get("dir", "outputs")) / "models"
+        models_dir.mkdir(parents=True, exist_ok=True)
+        return models_dir
+
+    def _get_release_models_dir(self, release_id: str) -> Path:
+        """Directorio versionado para una release de modelos."""
+        release_dir = self._get_models_output_dir() / "releases" / release_id
+        release_dir.mkdir(parents=True, exist_ok=True)
+        return release_dir
+
+    def _get_active_release_manifest_path(self, profile_name: str | None = None) -> Path:
+        """Ruta del puntero a la release activa usada por producción."""
+        profile_label = self._normalize_profile_label(profile_name)
+        suffix = f"_{profile_label}" if profile_label else ""
+        return self._get_config_dir() / f"active_release{suffix}.json"
+
+    def _get_stable_optimized_config_path(self, profile_name: str | None = None) -> Path:
+        """Alias estable de la configuración optimizada para un perfil."""
+        profile_label = self._normalize_profile_label(profile_name)
+        suffix = f"_{profile_label}" if profile_label else ""
+        return self._get_config_dir() / f"config_optimizado{suffix}.yaml"
+
+    def _write_yaml_atomic(self, path: Path, payload: dict[str, Any]) -> None:
+        """Escribe YAML de forma atómica para evitar lecturas parciales."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = path.with_name(f"{path.name}.tmp")
+        try:
+            with open(tmp_path, "w", encoding="utf-8") as fh:
+                yaml.dump(payload, fh, default_flow_style=False, sort_keys=False)
+            os.replace(tmp_path, path)
+        finally:
+            if tmp_path.exists():
+                tmp_path.unlink(missing_ok=True)
+
+    def _write_json_atomic(self, path: Path, payload: dict[str, Any]) -> None:
+        """Escribe JSON de forma atómica para publicar la release activa."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = path.with_name(f"{path.name}.tmp")
+        try:
+            with open(tmp_path, "w", encoding="utf-8") as fh:
+                json.dump(payload, fh, indent=2, ensure_ascii=False)
+            os.replace(tmp_path, path)
+        finally:
+            if tmp_path.exists():
+                tmp_path.unlink(missing_ok=True)
+
+    def _copy_file_atomic(self, source: Path, destination: Path) -> None:
+        """Copia un archivo a su alias estable usando replace atómico."""
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = destination.with_name(f"{destination.name}.tmp")
+        try:
+            shutil.copy2(source, tmp_path)
+            os.replace(tmp_path, destination)
+        finally:
+            if tmp_path.exists():
+                tmp_path.unlink(missing_ok=True)
+
+    def _load_active_release_manifest(self, profile_name: str | None = None) -> dict[str, Any] | None:
+        """Carga el manifiesto de la release activa si existe."""
+        manifest_path = self._get_active_release_manifest_path(profile_name=profile_name)
+        if not manifest_path.exists():
+            return None
+        try:
+            with open(manifest_path, "r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except Exception as e:
+            self.logger.warning(f"No se pudo leer la release activa desde {manifest_path}: {e}")
+            return None
+
+    def _resolve_manifest_path(self, raw_path: Any) -> Path | None:
+        """Normaliza rutas leídas del manifiesto."""
+        if not raw_path:
+            return None
+        try:
+            candidate = Path(str(raw_path))
+        except Exception:
+            return None
+        if not candidate.is_absolute():
+            candidate = (Path.cwd() / candidate).resolve()
+        return candidate
+
+    def _resolve_active_release_assets(self, profile_name: str | None = None) -> dict[str, Any]:
+        """Resuelve config, modelos y resumen de la release activa."""
+        output_root = Path(self.config.get("output", {}).get("dir", "outputs")).resolve()
+        config_dir = self._get_config_dir()
+        profile_label = self._normalize_profile_label(profile_name or self._get_strategy_profile_name())
+        profile_config_path = self._get_stable_optimized_config_path(profile_label)
+        default_config_path = config_dir / "config_optimizado.yaml"
+
+        assets: dict[str, Any] = {
+            "release_id": None,
+            "activated_at": None,
+            "strategy_profile": profile_label,
+            "config_path": profile_config_path if profile_config_path.exists() else default_config_path,
+            "models_dir": output_root / "models",
+            "summary_csv": output_root / "backtest" / "summary_best_runs.csv",
+            "summary_xlsx": output_root / "backtest" / "summary_best_runs.xlsx",
+        }
+
+        manifest = self._load_active_release_manifest(profile_name=profile_label)
+        if not manifest:
+            return assets
+
+        assets["release_id"] = manifest.get("release_id")
+        assets["activated_at"] = manifest.get("activated_at")
+        assets["strategy_profile"] = manifest.get("strategy_profile") or assets["strategy_profile"]
+
+        for field, key in [
+            ("config_path", "config_path"),
+            ("models_dir", "models_dir"),
+            ("summary_csv", "summary_csv_path"),
+            ("summary_xlsx", "summary_xlsx_path"),
+        ]:
+            resolved = self._resolve_manifest_path(manifest.get(key))
+            if resolved and resolved.exists():
+                assets[field] = resolved
+
+        return assets
+
+    def _resolve_active_release_config_path(self, profile_name: str | None = None) -> Path:
+        """Config optimizada activa, con fallback al alias estable."""
+        assets = self._resolve_active_release_assets(profile_name=profile_name)
+        return Path(assets["config_path"])
+
+    def _build_dated_log_path(self, log_file: Path) -> Path:
+        """Genera un nombre de log con fecha para evitar crecer un archivo unico."""
+        date_label = datetime.now().strftime("%Y-%m-%d")
+        if log_file.suffix:
+            return log_file.with_name(f"{log_file.stem}_{date_label}{log_file.suffix}")
+        return log_file.with_name(f"{log_file.name}_{date_label}.log")
+
+    def _publish_active_release(
+        self,
+        *,
+        release_id: str,
+        optimized_config: dict[str, Any],
+        versioned_config_path: Path,
+        models_dir: Path,
+        champion_name: str | None,
+        profile_name: str | None = None,
+    ) -> None:
+        """Activa una release completa sin exponer artefactos parciales."""
+        summary_csv = self._latest_backtest_summary_paths.get("csv")
+        summary_xlsx = self._latest_backtest_summary_paths.get("xlsx")
+        profile_label = self._normalize_profile_label(profile_name or self._get_strategy_profile_name())
+        stable_config_path = self._get_stable_optimized_config_path(profile_label)
+        manifest_path = self._get_active_release_manifest_path(profile_label)
+
+        manifest_payload = {
+            "release_id": release_id,
+            "activated_at": datetime.now().isoformat(timespec="seconds"),
+            "champion_model": champion_name,
+            "strategy_profile": profile_label,
+            "config_path": str(versioned_config_path.resolve()),
+            "models_dir": str(models_dir.resolve()),
+            "summary_csv_path": str(summary_csv.resolve()) if isinstance(summary_csv, Path) and summary_csv.exists() else None,
+            "summary_xlsx_path": str(summary_xlsx.resolve()) if isinstance(summary_xlsx, Path) and summary_xlsx.exists() else None,
+        }
+
+        self._write_json_atomic(manifest_path, manifest_payload)
+        self._write_yaml_atomic(stable_config_path, optimized_config)
+
+        self.logger.info(
+            "Release activa publicada%s: %s | config=%s | models=%s",
+            f" [{profile_label}]" if profile_label else "",
+            release_id,
+            versioned_config_path,
+            models_dir,
+        )
+
+    def _ensure_mt5_client(self):
+        """Asegura una conexión MT5 reusable para producción/sync."""
+        mt5_config = self.config.get("mt5", {}) or {}
+        if self.data_loader is None:
+            self.data_loader = DataLoader(mt5_config=mt5_config)
+        if not self.data_loader.is_connected():
+            self.data_loader.connect()
+        return self.data_loader.mt5_client
+
+    def _get_live_trading_settings(self) -> dict[str, Any]:
+        trading_cfg = self.config.get("trading", {}) or {}
+        return {
+            "auto_execute_orders": bool(trading_cfg.get("auto_execute_orders", False)),
+            "execute_best_model_only": bool(trading_cfg.get("execute_best_model_only", True)),
+            "allow_multiple_positions": bool(trading_cfg.get("allow_multiple_positions", False)),
+            "magic_number": int(trading_cfg.get("magic_number", 202204) or 202204),
+            "order_comment_prefix": str(trading_cfg.get("order_comment_prefix", "MarkIII")),
+            "order_deviation_points": int(trading_cfg.get("order_deviation_points", 20) or 20),
+            "report_lookback_days": int(trading_cfg.get("report_lookback_days", 30) or 30),
+        }
+
+    def _is_future_leakage_column(self, column_name: str, target_col: str | None = None) -> bool:
+        """Identifica columnas que contienen información futura y no deben ser features."""
+        col = str(column_name or "")
+        if target_col and col == str(target_col):
+            return True
+        return col.startswith("ReturnFwd_") or col.startswith("ReturnFwd")
+
+    def _get_model_feature_columns(self, df: pd.DataFrame, target_col: str) -> list[str]:
+        """Columnas válidas para modelado, excluyendo target y variables futuras."""
+        feature_cols: list[str] = []
+        for col in df.columns:
+            if col == target_col:
+                continue
+            if self._is_future_leakage_column(col, target_col=target_col):
+                continue
+            if str(col).lower() == "date":
+                continue
+            try:
+                if df[col].isna().all():
+                    continue
+            except Exception:
+                pass
+            feature_cols.append(col)
+        return feature_cols
+
+    def _get_signal_confirmation_settings(self) -> dict[str, Any]:
+        """Configuración opcional de filtros híbridos para autorizar una señal."""
+        trading_cfg = self.config.get("trading", {}) or {}
+        raw_cfg = trading_cfg.get("signal_confirmation", {}) or {}
+        return {
+            "enabled": bool(raw_cfg.get("enabled", False)),
+            "require_momentum_alignment": bool(raw_cfg.get("require_momentum_alignment", True)),
+            "momentum_column": str(raw_cfg.get("momentum_column", "ROC_6")),
+            "momentum_buy_min": float(raw_cfg.get("momentum_buy_min", 0.0) or 0.0),
+            "momentum_sell_max": float(raw_cfg.get("momentum_sell_max", 0.0) or 0.0),
+            "require_volume_confirmation": bool(raw_cfg.get("require_volume_confirmation", False)),
+            "volume_column": str(raw_cfg.get("volume_column", "TickVolume_ZScore_20")),
+            "volume_min_strength": float(raw_cfg.get("volume_min_strength", 0.0) or 0.0),
+            "require_regime_confirmation": bool(raw_cfg.get("require_regime_confirmation", False)),
+            "regime_column": str(raw_cfg.get("regime_column", "ADX_14")),
+            "regime_min_strength": float(raw_cfg.get("regime_min_strength", 20.0) or 0.0),
+        }
+
+    def _coerce_feature_value(self, feature_row: pd.Series | dict[str, Any] | None, column_name: str) -> float | None:
+        if feature_row is None or not column_name:
+            return None
+        if isinstance(feature_row, pd.Series):
+            value = feature_row.get(column_name)
+        else:
+            value = dict(feature_row).get(column_name)
+        try:
+            if value is None or pd.isna(value):
+                return None
+            return float(value)
+        except Exception:
+            return None
+
+    def _evaluate_signal_confirmation(
+        self,
+        *,
+        signal: str,
+        feature_row: pd.Series | dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Aplica filtros opcionales de momentum/volumen/régimen a una señal ya propuesta."""
+        settings = self._get_signal_confirmation_settings()
+        signal_upper = str(signal or "HOLD").upper()
+        details = {
+            "enabled": bool(settings["enabled"]),
+            "passed": True,
+            "reason": "confirmation_disabled",
+            "momentum_column": settings["momentum_column"],
+            "momentum_value": self._coerce_feature_value(feature_row, settings["momentum_column"]),
+            "volume_column": settings["volume_column"],
+            "volume_value": self._coerce_feature_value(feature_row, settings["volume_column"]),
+            "regime_column": settings["regime_column"],
+            "regime_value": self._coerce_feature_value(feature_row, settings["regime_column"]),
+        }
+
+        if signal_upper not in {"BUY", "SELL"}:
+            details["reason"] = "signal_hold"
+            return details
+
+        if not settings["enabled"]:
+            return details
+
+        details["reason"] = "confirmation_passed"
+
+        if settings["require_momentum_alignment"]:
+            momentum_value = details["momentum_value"]
+            if momentum_value is None:
+                details["passed"] = False
+                details["reason"] = f"missing_{settings['momentum_column']}"
+                return details
+            if signal_upper == "BUY" and momentum_value < settings["momentum_buy_min"]:
+                details["passed"] = False
+                details["reason"] = f"{settings['momentum_column']}_below_buy_threshold"
+                return details
+            if signal_upper == "SELL" and momentum_value > settings["momentum_sell_max"]:
+                details["passed"] = False
+                details["reason"] = f"{settings['momentum_column']}_above_sell_threshold"
+                return details
+
+        if settings["require_volume_confirmation"]:
+            volume_value = details["volume_value"]
+            if volume_value is None:
+                details["passed"] = False
+                details["reason"] = f"missing_{settings['volume_column']}"
+                return details
+            if volume_value < settings["volume_min_strength"]:
+                details["passed"] = False
+                details["reason"] = f"{settings['volume_column']}_below_strength"
+                return details
+
+        if settings["require_regime_confirmation"]:
+            regime_value = details["regime_value"]
+            if regime_value is None:
+                details["passed"] = False
+                details["reason"] = f"missing_{settings['regime_column']}"
+                return details
+            if regime_value < settings["regime_min_strength"]:
+                details["passed"] = False
+                details["reason"] = f"{settings['regime_column']}_below_strength"
+                return details
+
+        return details
+
+    def _get_risk_budget_settings(self) -> dict[str, Any]:
+        """Normaliza la configuracion de riesgo usada en produccion."""
+        trading_cfg = self.config.get("trading", {}) or {}
+        risk_cfg = self.config.get("risk", {}) or {}
+        risk_per_trade_pct = float(risk_cfg.get("risk_per_trade_pct", 0.01) or 0.0)
+        max_total_open_risk_pct = risk_cfg.get("max_total_open_risk_pct", risk_per_trade_pct)
+        try:
+            max_total_open_risk_pct = float(max_total_open_risk_pct)
+        except Exception:
+            max_total_open_risk_pct = risk_per_trade_pct
+        max_total_open_risk_pct = max(max_total_open_risk_pct, risk_per_trade_pct, 0.0)
+        return {
+            "allow_multiple_positions": bool(trading_cfg.get("allow_multiple_positions", False)),
+            "risk_per_trade_pct": risk_per_trade_pct,
+            "max_total_open_risk_pct": max_total_open_risk_pct,
+            "block_new_entries_without_sl": bool(risk_cfg.get("block_new_entries_without_sl", True)),
+        }
+
+    def _get_daily_loss_guard_settings(self) -> dict[str, Any]:
+        """Configuracion del kill switch diario para produccion."""
+        risk_cfg = self.config.get("risk", {}) or {}
+        loss_limit_pct = float(risk_cfg.get("daily_loss_limit_pct", 0.03) or 0.0)
+        return {
+            "enabled": bool(risk_cfg.get("halt_on_daily_loss", True)) and loss_limit_pct > 0.0,
+            "daily_loss_limit_pct": max(loss_limit_pct, 0.0),
+            "daily_loss_measure": str(risk_cfg.get("daily_loss_measure", "equity")).lower(),
+            "pre_trade_risk_validation": bool(risk_cfg.get("pre_trade_risk_validation", True)),
+            "risk_validation_tolerance_pct": float(risk_cfg.get("risk_validation_tolerance_pct", 0.05) or 0.0),
+        }
+
+    def _estimate_open_positions_risk(
+        self,
+        mt5_client,
+        open_positions: pd.DataFrame | None,
+    ) -> dict[str, Any]:
+        """Estima el riesgo monetario ya comprometido en posiciones abiertas."""
+        from utils.risk_utils import estimate_position_risk_amount
+
+        if open_positions is None or open_positions.empty:
+            return {
+                "open_risk_amount": 0.0,
+                "open_positions_count": 0,
+                "positions_without_sl": 0,
+            }
+
+        total_risk_amount = 0.0
+        positions_without_sl = 0
+        symbol_specs: dict[str, dict[str, Any]] = {}
+
+        for _, position in open_positions.iterrows():
+            symbol = str(position.get("symbol", ""))
+            volume = pd.to_numeric(pd.Series([position.get("volume")]), errors="coerce").iloc[0]
+            entry_price = pd.to_numeric(pd.Series([position.get("price_open")]), errors="coerce").iloc[0]
+            sl_price = pd.to_numeric(pd.Series([position.get("sl")]), errors="coerce").iloc[0]
+
+            if pd.isna(volume) or float(volume) <= 0 or pd.isna(entry_price):
+                continue
+            if pd.isna(sl_price) or float(sl_price) <= 0:
+                positions_without_sl += 1
+                continue
+
+            if symbol not in symbol_specs:
+                try:
+                    symbol_specs[symbol] = mt5_client.get_symbol_spec(symbol) or {}
+                except Exception:
+                    symbol_specs[symbol] = {}
+
+            spec = symbol_specs[symbol]
+            point = float(spec.get("point") or 0.0)
+            contract_size = float(spec.get("trade_contract_size") or 0.0)
+            if point <= 0:
+                point = 0.0001
+            if contract_size <= 0:
+                contract_size = 100000.0
+
+            total_risk_amount += estimate_position_risk_amount(
+                entry_price=float(entry_price),
+                sl_price=float(sl_price),
+                point=point,
+                contract_size=contract_size,
+                volume_lots=float(volume),
+            )
+
+        return {
+            "open_risk_amount": float(total_risk_amount),
+            "open_positions_count": int(len(open_positions)),
+            "positions_without_sl": int(positions_without_sl),
+        }
+
+    def _get_production_output_paths(self) -> dict[str, Path]:
+        output_dir = Path(self.config.get("output", {}).get("dir", "outputs")) / "production"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        return {
+            "dir": output_dir,
+            "signals": output_dir / "production_signals.csv",
+            "lifecycle": output_dir / "trade_lifecycle_report.csv",
+            "closed": output_dir / "closed_trades_report.csv",
+            "daily": output_dir / "daily_trade_report.csv",
+            "daily_risk_state": output_dir / "daily_risk_state.json",
+            "automation_halt": output_dir / "automation_halt_state.json",
+        }
+
+    def _coerce_csv_scalar(self, value: Any) -> Any:
+        """Normaliza valores leidos desde CSV a tipos simples."""
+        if value is None:
+            return pd.NA
+
+        text = str(value).strip()
+        if not text or text.lower() == "nan":
+            return pd.NA
+        if text.lower() == "true":
+            return True
+        if text.lower() == "false":
+            return False
+
+        numeric = pd.to_numeric(pd.Series([text]), errors="coerce").iloc[0]
+        if pd.notna(numeric):
+            return numeric.item() if hasattr(numeric, "item") else numeric
+        return text
+
+    def _convert_legacy_signal_row(self, legacy_row: dict[str, Any]) -> dict[str, Any]:
+        """Convierte una fila legacy ';'-separada al esquema actual de production."""
+        field_mapping = {
+            "timestamp": "timestamp",
+            "symbol": "symbol",
+            "timeframe": "timeframe",
+            "model": "model",
+            "pred_return": "pred_return",
+            "signal": "signal",
+            "confidence": "confidence",
+            "entry_price": "entry_price",
+            "planned_entry_price": "planned_entry_price",
+            "price_now": "price_now",
+            "price_target": "price_target",
+            "delta_price": "delta_price",
+            "pips": "pips",
+            "sl_price": "sl_price",
+            "tp_price": "tp_price",
+            "sl_pips": "sl_pips",
+            "tp_pips": "tp_pips",
+            "market_reference_price": "market_reference_price",
+            "live_entry_price": "live_entry_price",
+            "live_sl_price": "live_sl_price",
+            "live_tp_price": "live_tp_price",
+            "live_sl_pips": "live_sl_pips",
+            "live_tp_pips": "live_tp_pips",
+            "symbol_digits": "symbol_digits",
+            "stops_level_points": "stops_level_points",
+            "freeze_level_points": "freeze_level_points",
+            "volume_lots": "volume_lots",
+            "account_balance": "account_balance",
+            "risk_per_trade_pct": "risk_per_trade_pct",
+            "risk_amount": "risk_amount",
+            "is_best_model": "is_best_model",
+            "rmse_backtest": "rmse_backtest",
+            "mae_backtest": "mae_backtest",
+            "hit_rate_backtest": "hit_rate_backtest",
+            "accuracy_backtest": "accuracy_backtest",
+            "f1_score_backtest": "f1_score_backtest",
+            "precision_backtest": "precision_backtest",
+            "recall_backtest": "recall_backtest",
+            "dm_stat_backtest": "dm_stat_backtest",
+            "dm_pvalue_backtest": "dm_pvalue_backtest",
+            "sharpe_backtest": "sharpe_backtest",
+            "sortino_backtest": "sortino_backtest",
+            "calmar_backtest": "calmar_backtest",
+            "max_drawdown_backtest": "max_drawdown_backtest",
+            "profit_factor_backtest": "profit_factor_backtest",
+            "win_rate_backtest": "win_rate_backtest",
+            "payoff_ratio_backtest": "payoff_ratio_backtest",
+            "consistency_ratio_backtest": "consistency_ratio_backtest",
+            "avg_trade_return_backtest": "avg_trade_return_backtest",
+        }
+
+        normalized: dict[str, Any] = {}
+        for legacy_key, current_key in field_mapping.items():
+            if legacy_key not in legacy_row:
+                continue
+            normalized[current_key] = self._coerce_csv_scalar(legacy_row.get(legacy_key))
+        return normalized
+
+    def _normalize_signal_history_dataframe(self, df: pd.DataFrame, path: Path) -> pd.DataFrame:
+        """Limpia historicos mezclados de production_signals.csv."""
+        if df is None or df.empty or path.name != "production_signals.csv":
+            return df
+
+        legacy_columns = [
+            column
+            for column in df.columns
+            if isinstance(column, str) and ";" in column and "timestamp" in column and "signal" in column
+        ]
+        if not legacy_columns:
+            return df
+
+        migrated_rows: list[dict[str, Any]] = []
+        for legacy_column in legacy_columns:
+            header_fields = [field.strip() for field in str(legacy_column).split(";") if field.strip()]
+            if len(header_fields) < 5:
+                continue
+
+            for raw_value in df[legacy_column].dropna().tolist():
+                raw_text = str(raw_value).strip()
+                if not raw_text or raw_text.lower() == "nan" or raw_text.startswith("timestamp;"):
+                    continue
+
+                values = raw_text.split(";")
+                if len(values) < len(header_fields):
+                    values.extend([""] * (len(header_fields) - len(values)))
+                legacy_payload = dict(zip(header_fields, values[: len(header_fields)]))
+                migrated_rows.append(self._convert_legacy_signal_row(legacy_payload))
+
+        normalized = df.drop(columns=legacy_columns, errors="ignore").copy()
+        unnamed_columns = [
+            column
+            for column in normalized.columns
+            if isinstance(column, str) and column.startswith("Unnamed:")
+        ]
+        if unnamed_columns:
+            normalized = normalized.drop(columns=unnamed_columns, errors="ignore")
+
+        if "timestamp" in normalized.columns:
+            timestamp_as_text = normalized["timestamp"].astype(str).str.strip()
+            normalized = normalized[normalized["timestamp"].notna() & (timestamp_as_text != "")]
+
+        if migrated_rows:
+            migrated_df = pd.DataFrame(migrated_rows)
+            all_columns = list(normalized.columns)
+            for column in migrated_df.columns:
+                if column not in all_columns:
+                    all_columns.append(column)
+            normalized = normalized.reindex(columns=all_columns)
+            migrated_df = migrated_df.reindex(columns=all_columns)
+            normalized = pd.concat([migrated_df, normalized], ignore_index=True)
+
+        self.logger.info(
+            f"Se normalizo el historico legado de senales en {path.name}: "
+            f"columnas_legacy={len(legacy_columns)}, filas_migradas={len(migrated_rows)}"
+        )
+        return normalized.reset_index(drop=True)
+
+    def _load_json_safe(self, path: Path) -> dict[str, Any] | None:
+        """Lee un JSON local si existe y es valido."""
+        if not path.exists():
+            return None
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except Exception as e:
+            self.logger.warning(f"No se pudo leer JSON desde {path}: {e}")
+            return None
+
+    def _select_daily_loss_reference_value(
+        self,
+        *,
+        balance: float,
+        equity: float | None,
+        measure: str,
+    ) -> float:
+        """Selecciona la magnitud usada para medir la perdida diaria."""
+        balance_value = max(float(balance or 0.0), 0.0)
+        equity_value = balance_value if equity is None else max(float(equity or 0.0), 0.0)
+        measure = str(measure or "equity").lower()
+        if measure == "balance":
+            return balance_value
+        if measure == "min_balance_equity":
+            return min(balance_value, equity_value)
+        return equity_value
+
+    def _update_daily_loss_guard_state(self, mt5_client=None) -> dict[str, Any]:
+        """Actualiza el estado diario de perdida maxima y activa un halt si corresponde."""
+        settings = self._get_daily_loss_guard_settings()
+        paths = self._get_production_output_paths()
+        today_label = datetime.now().date().isoformat()
+
+        default_state = {
+            "enabled": settings["enabled"],
+            "date": today_label,
+            "halt_active": False,
+            "daily_loss_limit_pct": settings["daily_loss_limit_pct"],
+            "daily_loss_measure": settings["daily_loss_measure"],
+        }
+        if not settings["enabled"]:
+            return default_state
+
+        try:
+            if mt5_client is None:
+                mt5_client = self._ensure_mt5_client()
+            account_info = mt5_client.get_account_info() or {}
+        except Exception as e:
+            self.logger.warning(f"No se pudo actualizar el guard diario de perdida: {e}")
+            return {**default_state, "error": str(e)}
+
+        balance = float(account_info.get("balance", 0.0) or 0.0)
+        equity = account_info.get("equity")
+        equity = None if equity is None else float(equity or 0.0)
+        current_value = self._select_daily_loss_reference_value(
+            balance=balance,
+            equity=equity,
+            measure=settings["daily_loss_measure"],
+        )
+
+        existing_state = self._load_json_safe(paths["daily_risk_state"]) or {}
+        start_value = existing_state.get("start_value")
+        start_value = None if start_value is None else float(start_value)
+        if existing_state.get("date") != today_label or not start_value or start_value <= 0:
+            start_value = current_value
+            existing_state = {
+                "date": today_label,
+                "start_balance": balance,
+                "start_equity": equity,
+                "start_value": current_value,
+            }
+
+        daily_loss_amount = max(start_value - current_value, 0.0)
+        daily_loss_pct = (daily_loss_amount / start_value) if start_value > 0 else 0.0
+        halt_active = daily_loss_pct >= settings["daily_loss_limit_pct"] > 0.0
+
+        state_payload = {
+            **existing_state,
+            "enabled": settings["enabled"],
+            "daily_loss_limit_pct": settings["daily_loss_limit_pct"],
+            "daily_loss_measure": settings["daily_loss_measure"],
+            "last_balance": balance,
+            "last_equity": equity,
+            "current_value": current_value,
+            "daily_loss_amount": daily_loss_amount,
+            "daily_loss_pct": daily_loss_pct,
+            "halt_active": halt_active,
+            "updated_at": datetime.now().isoformat(),
+        }
+        self._write_json_atomic(paths["daily_risk_state"], state_payload)
+
+        halt_payload = {
+            "active": halt_active,
+            "date": today_label,
+            "reason": "daily_loss_limit" if halt_active else None,
+            "daily_loss_limit_pct": settings["daily_loss_limit_pct"],
+            "daily_loss_measure": settings["daily_loss_measure"],
+            "start_value": start_value,
+            "current_value": current_value,
+            "daily_loss_amount": daily_loss_amount,
+            "daily_loss_pct": daily_loss_pct,
+            "updated_at": datetime.now().isoformat(),
+        }
+        self._write_json_atomic(paths["automation_halt"], halt_payload)
+
+        if halt_active:
+            self.logger.warning(
+                "Kill switch diario activo: perdida %.2f%% (limite %.2f%%) medida sobre %s.",
+                daily_loss_pct * 100.0,
+                settings["daily_loss_limit_pct"] * 100.0,
+                settings["daily_loss_measure"],
+            )
+
+        return {
+            **state_payload,
+            "start_value": start_value,
+        }
+
+    def _validate_pre_trade_execution(
+        self,
+        *,
+        row: pd.Series | dict[str, Any],
+        balance: float,
+    ) -> tuple[bool, str]:
+        """Valida sizing y riesgo antes de enviar una orden real."""
+        settings = self._get_daily_loss_guard_settings()
+        if not settings["pre_trade_risk_validation"]:
+            return True, "Validacion previa de riesgo desactivada."
+
+        data = row.to_dict() if isinstance(row, pd.Series) else dict(row)
+        volume_lots = float(pd.to_numeric(pd.Series([data.get("volume_lots")]), errors="coerce").iloc[0] or 0.0)
+        allocated_risk_budget = float(
+            pd.to_numeric(pd.Series([data.get("allocated_risk_budget")]), errors="coerce").iloc[0] or 0.0
+        )
+        risk_amount = float(pd.to_numeric(pd.Series([data.get("risk_amount")]), errors="coerce").iloc[0] or 0.0)
+        projected_total_open_risk = float(
+            pd.to_numeric(pd.Series([data.get("projected_total_open_risk_after_trade")]), errors="coerce").iloc[0] or 0.0
+        )
+        live_entry_price = pd.to_numeric(pd.Series([data.get("live_entry_price")]), errors="coerce").iloc[0]
+        live_sl_price = pd.to_numeric(pd.Series([data.get("live_sl_price")]), errors="coerce").iloc[0]
+        live_sl_pips = pd.to_numeric(pd.Series([data.get("live_sl_pips")]), errors="coerce").iloc[0]
+        max_total_open_risk_pct = float(
+            pd.to_numeric(pd.Series([data.get("max_total_open_risk_pct")]), errors="coerce").iloc[0] or 0.0
+        )
+        risk_validation_tolerance_pct = max(float(settings["risk_validation_tolerance_pct"]), 0.0)
+
+        if volume_lots <= 0:
+            return False, "Lote calculado <= 0."
+        if pd.isna(live_entry_price) or pd.isna(live_sl_price):
+            return False, "Faltan entry/sl live para validar riesgo."
+        if abs(float(live_entry_price) - float(live_sl_price)) <= 0:
+            return False, "La distancia entry-SL es cero."
+        if pd.notna(live_sl_pips) and float(live_sl_pips) <= 0:
+            return False, "SL en pips invalido."
+        if allocated_risk_budget <= 0:
+            return False, "No hay presupuesto de riesgo asignado."
+
+        tolerance_amount = max(1.0, allocated_risk_budget * risk_validation_tolerance_pct)
+        if risk_amount - allocated_risk_budget > tolerance_amount:
+            return False, (
+                f"Riesgo estimado {risk_amount:.2f} excede el presupuesto "
+                f"{allocated_risk_budget:.2f} por mas de la tolerancia {tolerance_amount:.2f}."
+            )
+
+        total_risk_limit = max(float(balance or 0.0) * max_total_open_risk_pct, 0.0)
+        total_tolerance = max(1.0, total_risk_limit * risk_validation_tolerance_pct)
+        if total_risk_limit > 0 and projected_total_open_risk - total_risk_limit > total_tolerance:
+            return False, (
+                f"Riesgo abierto proyectado {projected_total_open_risk:.2f} excede el limite total "
+                f"{total_risk_limit:.2f} por mas de la tolerancia {total_tolerance:.2f}."
+            )
+
+        return True, "Validacion previa de riesgo OK."
+
+    def _append_rows_to_csv(self, path: Path, df_rows: pd.DataFrame) -> Path | None:
+        """Agrega filas a un CSV unificando columnas con el histórico."""
+        if df_rows is None or df_rows.empty:
+            return None
+
+        if path.exists():
+            try:
+                existing = pd.read_csv(path)
+            except EmptyDataError:
+                existing = pd.DataFrame()
+            existing = self._normalize_signal_history_dataframe(existing, path)
+            all_cols = list(existing.columns)
+            for c in df_rows.columns:
+                if c not in all_cols:
+                    all_cols.append(c)
+            existing = existing.reindex(columns=all_cols)
+            df_rows = df_rows.reindex(columns=all_cols)
+            df_to_save = pd.concat([existing, df_rows], ignore_index=True)
+        else:
+            df_to_save = df_rows
+
+        tmp_path = path.with_name(f"{path.stem}.tmp{path.suffix}")
+        for attempt in range(3):
+            try:
+                df_to_save.to_csv(tmp_path, index=False)
+                os.replace(tmp_path, path)
+                return path
+            except PermissionError:
+                try:
+                    tmp_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
+                if attempt < 2:
+                    self.logger.warning(
+                        f"No se pudo escribir {path} porque está en uso. Reintentando ({attempt + 1}/3)..."
+                    )
+                    time.sleep(1.0)
+                    continue
+
+                fallback_path = path.with_name(
+                    f"{path.stem}_locked_{datetime.now().strftime('%Y%m%d_%H%M%S')}{path.suffix}"
+                )
+                df_to_save.to_csv(fallback_path, index=False)
+                self.logger.error(
+                    f"No se pudo escribir {path}. Probablemente está abierto en Excel o bloqueado por otro proceso. "
+                    f"Se guardó una copia alternativa en: {fallback_path}"
+                )
+                return fallback_path
+
+        return path
+
+    def _build_signal_id(self, row: pd.Series | dict[str, Any]) -> str:
+        data = row.to_dict() if isinstance(row, pd.Series) else dict(row)
+        raw_ts = data.get("timestamp", data.get("signal_time"))
+        ts = pd.to_datetime(raw_ts, errors="coerce")
+        ts_str = ts.isoformat() if pd.notna(ts) else str(raw_ts)
+        return "|".join(
+            [
+                str(data.get("symbol", "")),
+                str(data.get("timeframe", "")),
+                str(data.get("model", "")),
+                str(data.get("signal", "")),
+                ts_str,
+            ]
+        )
+
+    def _build_order_comment(self, model_name: str) -> str:
+        live_cfg = self._get_live_trading_settings()
+        prefix = "".join(ch for ch in live_cfg["order_comment_prefix"] if ch.isalnum()) or "MarkIII"
+        model_tag = "".join(ch for ch in str(model_name) if ch.isalnum())[:12] or "Model"
+        return f"{prefix}_{model_tag}"[:31]
+
+    def _save_daily_trade_report(self, lifecycle: pd.DataFrame) -> pd.DataFrame:
+        """Construye un agregado diario por fecha/símbolo/modelo a partir del lifecycle."""
+        paths = self._get_production_output_paths()
+
+        if lifecycle is None or lifecycle.empty:
+            pd.DataFrame().to_csv(paths["daily"], index=False)
+            return pd.DataFrame()
+
+        df = lifecycle.copy()
+        df["signal_time"] = pd.to_datetime(df.get("signal_time"), errors="coerce")
+        df["close_time"] = pd.to_datetime(df.get("close_time"), errors="coerce")
+        df["close_profit_net"] = pd.to_numeric(df.get("close_profit_net"), errors="coerce")
+        df["entry_date"] = df["signal_time"].dt.date
+        df["status_upper"] = df.get("status", "").astype(str).str.upper()
+
+        closed_mask = df["status_upper"] == "CLOSED"
+        df["is_closed"] = closed_mask.astype(int)
+        df["is_open"] = df["status_upper"].isin(["OPEN", "PENDING_CONFIRMATION"]).astype(int)
+        df["is_failed"] = df["status_upper"].eq("FAILED").astype(int)
+        df["is_skipped"] = df["status_upper"].str.startswith("SKIPPED").astype(int)
+        df["is_win"] = (closed_mask & (df["close_profit_net"].fillna(0.0) > 0)).astype(int)
+        df["is_loss"] = (closed_mask & (df["close_profit_net"].fillna(0.0) < 0)).astype(int)
+
+        holding_hours = (
+            (df["close_time"] - df["signal_time"]).dt.total_seconds() / 3600.0
+        )
+        df["holding_hours"] = holding_hours.where(closed_mask, np.nan)
+
+        group_cols = [
+            "entry_date",
+            "strategy_profile",
+            "release_id",
+            "magic_number",
+            "symbol",
+            "timeframe",
+            "model",
+        ]
+        for col in group_cols:
+            if col not in df.columns:
+                df[col] = pd.NA
+        daily = (
+            df.groupby(group_cols, dropna=False)
+            .agg(
+                signals=("signal_id", "count"),
+                closed_trades=("is_closed", "sum"),
+                open_trades=("is_open", "sum"),
+                failed_trades=("is_failed", "sum"),
+                skipped_trades=("is_skipped", "sum"),
+                wins=("is_win", "sum"),
+                losses=("is_loss", "sum"),
+                net_profit=("close_profit_net", "sum"),
+                avg_profit=("close_profit_net", "mean"),
+                avg_holding_hours=("holding_hours", "mean"),
+            )
+            .reset_index()
+        )
+
+        daily["win_rate_closed"] = np.where(
+            daily["closed_trades"] > 0,
+            daily["wins"] / daily["closed_trades"] * 100.0,
+            np.nan,
+        )
+        daily.to_csv(paths["daily"], index=False)
+        return daily
+
+    def _sync_live_trade_report(self) -> pd.DataFrame:
+        """Actualiza el estado de trades ejecutados usando posiciones y deals de MT5."""
+        paths = self._get_production_output_paths()
+        lifecycle_path = paths["lifecycle"]
+
+        if not lifecycle_path.exists():
+            return pd.DataFrame()
+
+        try:
+            lifecycle = pd.read_csv(lifecycle_path)
+        except EmptyDataError:
+            return pd.DataFrame()
+        if lifecycle.empty:
+            paths["closed"].write_text("", encoding="utf-8")
+            paths["daily"].write_text("", encoding="utf-8")
+            return lifecycle
+
+        try:
+            mt5_client = self._ensure_mt5_client()
+        except Exception as e:
+            self.logger.warning(f"No se pudo conectar a MT5 para sincronizar trades: {e}")
+            return lifecycle
+
+        self._update_daily_loss_guard_state(mt5_client=mt5_client)
+
+        live_cfg = self._get_live_trading_settings()
+        open_positions = mt5_client.get_all_positions()
+        if open_positions is None or open_positions.empty:
+            open_position_ids: set[int] = set()
+        else:
+            open_position_ids = set()
+            for col in ["ticket", "identifier"]:
+                if col in open_positions.columns:
+                    open_position_ids.update(
+                        pd.to_numeric(open_positions[col], errors="coerce").dropna().astype(int).tolist()
+                    )
+
+        # MT5 puede devolver tiempos del broker varias horas por delante del reloj local.
+        # Extendemos la ventana hacia el futuro para no perder cierres manuales recientes.
+        deals_date_from = datetime.now() - timedelta(days=live_cfg["report_lookback_days"])
+        deals_date_to = datetime.now() + timedelta(days=1)
+        deals = mt5_client.get_history_deals(
+            date_from=deals_date_from,
+            date_to=deals_date_to,
+            magic=live_cfg["magic_number"],
+        )
+        all_deals = mt5_client.get_history_deals(
+            date_from=deals_date_from,
+            date_to=deals_date_to,
+        )
+
+        lifecycle["status"] = lifecycle["status"].astype(str)
+        now_iso = datetime.now().isoformat()
+        changed = False
+
+        for idx, row in lifecycle.iterrows():
+            status = str(row.get("status", "")).upper()
+            if status not in {"OPEN", "PENDING_CONFIRMATION"}:
+                continue
+
+            position_value = pd.to_numeric(pd.Series([row.get("mt5_position_id")]), errors="coerce").iloc[0]
+            if pd.isna(position_value):
+                continue
+            position_id = int(position_value)
+
+            lifecycle.at[idx, "last_sync_time"] = now_iso
+            changed = True
+
+            if position_id in open_position_ids:
+                if open_positions is not None and not open_positions.empty and "ticket" in open_positions.columns:
+                    pos_rows = open_positions[
+                        pd.to_numeric(open_positions["ticket"], errors="coerce").fillna(-1).astype(int) == position_id
+                    ].copy()
+                    if pos_rows.empty and "identifier" in open_positions.columns:
+                        pos_rows = open_positions[
+                            pd.to_numeric(open_positions["identifier"], errors="coerce").fillna(-1).astype(int) == position_id
+                        ].copy()
+
+                    if not pos_rows.empty:
+                        pos_row = pos_rows.iloc[0]
+                        current_sl = pd.to_numeric(pd.Series([pos_row.get("sl")]), errors="coerce").iloc[0]
+                        current_tp = pd.to_numeric(pd.Series([pos_row.get("tp")]), errors="coerce").iloc[0]
+                        lifecycle.at[idx, "applied_sl_price"] = current_sl
+                        lifecycle.at[idx, "applied_tp_price"] = current_tp
+
+                        requested_sl = pd.to_numeric(pd.Series([row.get("requested_sl_price")]), errors="coerce").iloc[0]
+                        requested_tp = pd.to_numeric(pd.Series([row.get("requested_tp_price")]), errors="coerce").iloc[0]
+                        needs_sl = pd.notna(requested_sl) and (pd.isna(current_sl) or abs(float(current_sl)) <= 0.0)
+                        needs_tp = pd.notna(requested_tp) and (pd.isna(current_tp) or abs(float(current_tp)) <= 0.0)
+
+                        if needs_sl or needs_tp:
+                            protection = mt5_client.ensure_position_protection(
+                                symbol=str(row.get("symbol", "")),
+                                position_ticket=position_id,
+                                side=str(row.get("signal", "")).upper(),
+                                sl=None if pd.isna(requested_sl) else float(requested_sl),
+                                tp=None if pd.isna(requested_tp) else float(requested_tp),
+                            )
+                            lifecycle.at[idx, "protection_status"] = (
+                                "PROTECTED" if protection.get("success") else "UNPROTECTED"
+                            )
+                            lifecycle.at[idx, "protection_comment"] = protection.get("comment")
+                            lifecycle.at[idx, "applied_sl_price"] = protection.get("applied_sl")
+                            lifecycle.at[idx, "applied_tp_price"] = protection.get("applied_tp")
+                            changed = True
+                continue
+
+            if deals is None or deals.empty or "position_id" not in deals.columns:
+                deals_pos = pd.DataFrame()
+            else:
+                deals_pos = deals[
+                    pd.to_numeric(deals["position_id"], errors="coerce").fillna(-1).astype(int) == position_id
+                ].copy()
+
+            used_unfiltered_history = False
+            if deals_pos.empty:
+                if all_deals is None or all_deals.empty or "position_id" not in all_deals.columns:
+                    continue
+                deals_pos = all_deals[
+                    pd.to_numeric(all_deals["position_id"], errors="coerce").fillna(-1).astype(int) == position_id
+                ].copy()
+                used_unfiltered_history = not deals_pos.empty
+
+            if deals_pos.empty:
+                continue
+
+            if "entry" in deals_pos.columns:
+                exit_mask = pd.to_numeric(deals_pos["entry"], errors="coerce").isin([1, 3])
+                exit_deals = deals_pos[exit_mask].copy()
+            else:
+                exit_deals = deals_pos.iloc[1:].copy()
+
+            if exit_deals.empty:
+                if not used_unfiltered_history and all_deals is not None and not all_deals.empty and "position_id" in all_deals.columns:
+                    deals_pos = all_deals[
+                        pd.to_numeric(all_deals["position_id"], errors="coerce").fillna(-1).astype(int) == position_id
+                    ].copy()
+                    used_unfiltered_history = not deals_pos.empty
+                    if "entry" in deals_pos.columns:
+                        exit_mask = pd.to_numeric(deals_pos["entry"], errors="coerce").isin([1, 3])
+                        exit_deals = deals_pos[exit_mask].copy()
+                    else:
+                        exit_deals = deals_pos.iloc[1:].copy()
+
+                if exit_deals.empty:
+                    continue
+
+            exit_deals = exit_deals.sort_values("time")
+            exit_deal = exit_deals.iloc[-1]
+
+            net_profit = 0.0
+            for col in ["profit", "commission", "swap", "fee"]:
+                if col in deals_pos.columns:
+                    net_profit += pd.to_numeric(deals_pos[col], errors="coerce").fillna(0.0).sum()
+
+            lifecycle.at[idx, "status"] = "CLOSED"
+            lifecycle.at[idx, "close_time"] = (
+                pd.to_datetime(exit_deal.get("time"), errors="coerce").isoformat()
+                if pd.notna(pd.to_datetime(exit_deal.get("time"), errors="coerce"))
+                else exit_deal.get("time")
+            )
+            lifecycle.at[idx, "close_price"] = pd.to_numeric(
+                pd.Series([exit_deal.get("price")]), errors="coerce"
+            ).iloc[0]
+            lifecycle.at[idx, "close_profit_net"] = float(net_profit)
+            lifecycle.at[idx, "close_reason"] = exit_deal.get("reason_label", exit_deal.get("comment"))
+            lifecycle.at[idx, "close_deal_ticket"] = exit_deal.get("ticket")
+            if used_unfiltered_history:
+                close_reason = str(lifecycle.at[idx, "close_reason"] or "").upper()
+                if close_reason == "CLIENT":
+                    lifecycle.at[idx, "status_detail"] = "Cierre manual detectado en MT5."
+                else:
+                    lifecycle.at[idx, "status_detail"] = "Cierre detectado via historial MT5 sin filtro de magic."
+            changed = True
+
+        if changed:
+            lifecycle.to_csv(lifecycle_path, index=False)
+
+        closed = lifecycle[lifecycle["status"].astype(str).str.upper() == "CLOSED"].copy()
+        closed.to_csv(paths["closed"], index=False)
+        self._save_daily_trade_report(lifecycle)
+        return lifecycle
+
+    def _execute_live_orders(self, df_rows: pd.DataFrame) -> None:
+        """Ejecuta órdenes reales en MT5 para las señales elegibles."""
+        if df_rows is None or df_rows.empty:
+            return
+
+        live_cfg = self._get_live_trading_settings()
+        if not live_cfg["auto_execute_orders"]:
+            return
+
+        try:
+            mt5_client = self._ensure_mt5_client()
+        except Exception as e:
+            self.logger.error(f"No se pudo conectar a MT5 para ejecutar órdenes: {e}")
+            return
+
+        daily_guard_state = self._update_daily_loss_guard_state(mt5_client=mt5_client)
+
+        self._sync_live_trade_report()
+
+        paths = self._get_production_output_paths()
+        if paths["lifecycle"].exists():
+            try:
+                lifecycle = pd.read_csv(paths["lifecycle"])
+            except EmptyDataError:
+                lifecycle = pd.DataFrame()
+        else:
+            lifecycle = pd.DataFrame()
+
+        existing_signal_ids = set()
+        if not lifecycle.empty and "signal_id" in lifecycle.columns:
+            existing_signal_ids = set(lifecycle["signal_id"].dropna().astype(str).tolist())
+
+        open_positions = mt5_client.get_all_positions()
+        execution_rows: list[dict[str, Any]] = []
+
+        for _, row in df_rows.iterrows():
+            signal = str(row.get("signal", "HOLD")).upper()
+            if signal not in {"BUY", "SELL"}:
+                continue
+
+            signal_id = self._build_signal_id(row)
+            if signal_id in existing_signal_ids:
+                self.logger.info(f"⏭ Señal ya ejecutada anteriormente, se omite: {signal_id}")
+                continue
+
+            symbol = str(row.get("symbol", ""))
+            model_name = str(row.get("model", "UNKNOWN"))
+            volume_value = pd.to_numeric(pd.Series([row.get("volume_lots")]), errors="coerce").iloc[0]
+            volume_lots = 0.0 if pd.isna(volume_value) else float(volume_value)
+            live_sl_value = pd.to_numeric(pd.Series([row.get("live_sl_price")]), errors="coerce").iloc[0]
+            live_tp_value = pd.to_numeric(pd.Series([row.get("live_tp_price")]), errors="coerce").iloc[0]
+            sl_price = live_sl_value if pd.notna(live_sl_value) else pd.to_numeric(
+                pd.Series([row.get("sl_price")]), errors="coerce"
+            ).iloc[0]
+            tp_price = live_tp_value if pd.notna(live_tp_value) else pd.to_numeric(
+                pd.Series([row.get("tp_price")]), errors="coerce"
+            ).iloc[0]
+
+            base_record = {
+                "signal_id": signal_id,
+                "signal_time": pd.to_datetime(row.get("timestamp"), errors="coerce"),
+                "execution_time": datetime.now().isoformat(),
+                "release_id": row.get("release_id"),
+                "strategy_profile": row.get("strategy_profile"),
+                "symbol": symbol,
+                "timeframe": row.get("timeframe"),
+                "model": model_name,
+                "signal": signal,
+                "confidence": row.get("confidence"),
+                "pred_return": row.get("pred_return"),
+                "requested_entry_price": row.get("entry_price"),
+                "requested_live_entry_price": row.get("live_entry_price"),
+                "requested_sl_price": sl_price,
+                "requested_tp_price": tp_price,
+                "requested_plan_sl_price": row.get("sl_price"),
+                "requested_plan_tp_price": row.get("tp_price"),
+                "requested_volume_lots": volume_lots,
+                "risk_amount": row.get("risk_amount"),
+                "allocated_risk_budget": row.get("allocated_risk_budget"),
+                "risk_per_pip_per_lot": row.get("risk_per_pip_per_lot"),
+                "risk_per_lot_at_stop": row.get("risk_per_lot_at_stop"),
+                "open_risk_amount": row.get("open_risk_amount"),
+                "remaining_risk_budget_before_trade": row.get("remaining_risk_budget_before_trade"),
+                "projected_total_open_risk_after_trade": row.get("projected_total_open_risk_after_trade"),
+                "is_best_model": row.get("is_best_model"),
+                "magic_number": live_cfg["magic_number"],
+                "order_comment_prefix": live_cfg["order_comment_prefix"],
+                "status": "PENDING_CONFIRMATION",
+                "status_detail": "",
+                "mt5_order_ticket": None,
+                "mt5_deal_ticket": None,
+                "mt5_position_id": None,
+                "execution_price": None,
+                "execution_retcode": None,
+                "execution_comment": None,
+                "applied_sl_price": None,
+                "applied_tp_price": None,
+                "protection_status": None,
+                "protection_comment": None,
+                "close_time": None,
+                "close_price": None,
+                "close_profit_net": None,
+                "close_reason": None,
+                "close_deal_ticket": None,
+                "last_sync_time": None,
+            }
+
+            if daily_guard_state.get("halt_active"):
+                base_record["status"] = "SKIPPED_DAILY_LOSS_LIMIT"
+                base_record["status_detail"] = (
+                    f"Kill switch diario activo: perdida {float(daily_guard_state.get('daily_loss_pct', 0.0)) * 100.0:.2f}% "
+                    f"con limite {float(daily_guard_state.get('daily_loss_limit_pct', 0.0)) * 100.0:.2f}%."
+                )
+                execution_rows.append(base_record)
+                existing_signal_ids.add(signal_id)
+                continue
+
+            if volume_lots <= 0:
+                base_record["status"] = "SKIPPED_NO_VOLUME"
+                base_record["status_detail"] = "El tamaño de posición calculado fue <= 0."
+                execution_rows.append(base_record)
+                existing_signal_ids.add(signal_id)
+                continue
+
+            valid_trade, validation_detail = self._validate_pre_trade_execution(
+                row=row,
+                balance=float(pd.to_numeric(pd.Series([row.get("account_balance")]), errors="coerce").iloc[0] or 0.0),
+            )
+            if not valid_trade:
+                base_record["status"] = "SKIPPED_RISK_VALIDATION"
+                base_record["status_detail"] = validation_detail
+                execution_rows.append(base_record)
+                existing_signal_ids.add(signal_id)
+                continue
+
+            if (
+                not live_cfg["allow_multiple_positions"]
+                and open_positions is not None
+                and not open_positions.empty
+                and "symbol" in open_positions.columns
+            ):
+                same_symbol = open_positions[open_positions["symbol"] == symbol]
+                if not same_symbol.empty:
+                    base_record["status"] = "SKIPPED_OPEN_POSITION"
+                    base_record["status_detail"] = f"Ya existe una posición abierta para {symbol}."
+                    execution_rows.append(base_record)
+                    existing_signal_ids.add(signal_id)
+                    continue
+
+            result = mt5_client.open_market_order(
+                symbol=symbol,
+                volume=volume_lots,
+                side=signal,
+                comment=self._build_order_comment(model_name),
+                sl=None if pd.isna(sl_price) else float(sl_price),
+                tp=None if pd.isna(tp_price) else float(tp_price),
+                deviation=live_cfg["order_deviation_points"],
+                magic=live_cfg["magic_number"],
+            )
+
+            base_record["status"] = "OPEN" if result.get("success") else "FAILED"
+            base_record["status_detail"] = result.get("comment")
+            base_record["mt5_order_ticket"] = result.get("order")
+            base_record["mt5_deal_ticket"] = result.get("deal")
+            base_record["mt5_position_id"] = result.get("position_id")
+            base_record["execution_price"] = result.get("price")
+            base_record["execution_retcode"] = result.get("retcode")
+            base_record["execution_comment"] = result.get("comment")
+            protection = result.get("protection") or {}
+            base_record["applied_sl_price"] = protection.get("applied_sl", result.get("sent_sl"))
+            base_record["applied_tp_price"] = protection.get("applied_tp", result.get("sent_tp"))
+            base_record["protection_status"] = "PROTECTED" if protection.get("success") else "UNPROTECTED"
+            base_record["protection_comment"] = protection.get("comment")
+            execution_rows.append(base_record)
+            existing_signal_ids.add(signal_id)
+
+            if result.get("success"):
+                self.logger.info(
+                    f"✅ Orden enviada: model={model_name} signal={signal} symbol={symbol} "
+                    f"lots={volume_lots:.2f} position_id={result.get('position_id')} "
+                    f"SL={base_record['applied_sl_price']} TP={base_record['applied_tp_price']} "
+                    f"protection={base_record['protection_status']}"
+                )
+                open_positions = mt5_client.get_all_positions()
+            else:
+                self.logger.error(
+                    f"❌ Falló la ejecución de {model_name} en {symbol}: {result.get('comment')} "
+                    f"(retcode={result.get('retcode')})"
+                )
+
+        if execution_rows:
+            df_exec = pd.DataFrame(execution_rows)
+            self._append_rows_to_csv(paths["lifecycle"], df_exec)
+            self._sync_live_trade_report()
     
     def _save_backtest_detail(self, model_name: str, df_bt: pd.DataFrame) -> None:
         """
@@ -72,12 +1476,12 @@ class TradingPipeline:
         if df_bt is None or df_bt.empty:
             return
 
-        output_dir = Path(self.config.get("output", {}).get("dir", "outputs")) / "backtest"
-        output_dir.mkdir(parents=True, exist_ok=True)
+        output_dir = self._get_backtest_output_dir()
 
         csv_path = output_dir / f"{model_name}_best_backtest_detail.csv"
         df_bt.to_csv(csv_path)
         self.logger.info(f"    💾 Detalle de backtest guardado en: {csv_path}")
+        self._archive_backtest_artifact(csv_path)
 
         # Si quieres también Excel
         if "excel" in self.config.get("output", {}).get("formats", []):
@@ -85,6 +1489,7 @@ class TradingPipeline:
             with pd.ExcelWriter(xlsx_path, engine="openpyxl") as writer:
                 df_bt.to_excel(writer, sheet_name="backtest_detail")
             self.logger.info(f"    💾 Detalle de backtest (Excel) guardado en: {xlsx_path}")
+            self._archive_backtest_artifact(xlsx_path)
 
     
     def _load_config(self, config_path: str) -> tuple[Dict[str, Any], str]:
@@ -93,7 +1498,7 @@ class TradingPipeline:
             raise FileNotFoundError(f"El archivo de configuración no se encontró en: {config_path}")
         with open(config_path, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
-        print(f"✅ Configuración cargada desde: {config_path}")
+        print(f"Configuracion cargada desde: {config_path}")
         return config, config_path
     
     def _setup_logging(self) -> None:
@@ -122,6 +1527,7 @@ class TradingPipeline:
         
         if log_config.get("to_file", True):
             log_file = Path(log_config.get("file_path", "logs/trading.log"))
+            log_file = self._build_dated_log_path(log_file)
             log_file.parent.mkdir(parents=True, exist_ok=True)
             file_handler = logging.FileHandler(log_file, encoding="utf-8")
             file_handler.setFormatter(fmt)
@@ -161,6 +1567,7 @@ class TradingPipeline:
                  Si es None, usa el modo del config
         """
         mode = mode or self.config.get("execution", {}).get("mode", "eda")
+        self._active_mode = str(mode).lower()
         
         self.logger.info(f"🚀 Ejecutando modo: {mode.upper()}")
         
@@ -174,6 +1581,8 @@ class TradingPipeline:
             self._run_production_mode()
         elif mode == "test":
             self._run_test_mode()  # NUEVO
+        elif mode == "sync_trades":
+            self._run_sync_trades_mode()
         elif mode == "clear_cache":
             self._run_clear_cache_mode()
         else:
@@ -217,6 +1626,7 @@ class TradingPipeline:
         self.logger.info("\n" + "="*60)
         self.logger.info("MODO: ENTRENAMIENTO DE MODELOS")
         self.logger.info("="*60 + "\n")
+        self._start_backtest_run()
         
         # --- PASO 1: Carga, Limpieza y Generación de Features ---
         df = self._load_data()
@@ -230,7 +1640,7 @@ class TradingPipeline:
         test_size = val_config.get("test_size", 0.2)
         
         # Asegurarse de que no haya NaNs en el target antes de dividir
-        target_col = self.config.get("backtest", {}).get("target", "Return_1")
+        target_col = self.config.get("backtest", {}).get("target", "ReturnFwd_1")
         df_features = df_features.dropna(subset=[target_col])
 
         split_index = int(len(df_features) * (1 - test_size))
@@ -251,7 +1661,7 @@ class TradingPipeline:
         self.logger.info("="*60 + "\n")
         
         # Cargar la configuración recién optimizada
-        optimized_config_path = Path(self.config_path).parent / "config_optimizado.yaml"
+        optimized_config_path = self._resolve_active_release_config_path()
         if not optimized_config_path.exists():
             self.logger.error("No se encontró 'config_optimizado.yaml'. Ejecute el backtest primero.")
             return
@@ -261,7 +1671,8 @@ class TradingPipeline:
         
         # Preparar datos de test
         y_test = df_test[target_col]
-        X_test = df_test.drop(columns=[target_col])
+        feature_cols = self._get_model_feature_columns(df_test, target_col)
+        X_test = df_test[feature_cols]
 
         # Evaluar cada modelo habilitado en la config optimizada
         for model_config in validation_pipeline.config.get("models", []):
@@ -290,29 +1701,40 @@ class TradingPipeline:
         self.logger.info("\n" + "=" * 60)
         self.logger.info("MODO: BACKTEST")
         self.logger.info("=" * 60 + "\n")
+        self._start_backtest_run()
 
         # 1) Cargar y procesar datos
         df = self._load_data()
         df_clean = self._clean_data(df)
         df_features = self._generate_features(df_clean)
 
-        target_col = self.config.get("backtest", {}).get("target", "Return_1")
-        if target_col in df_features.columns:
-            df_features = df_features.dropna(subset=[target_col])
+        target_col = self.config.get("backtest", {}).get("target", "ReturnFwd_1")
 
-        # 2) Aplicar hold-out opcional (validation.mode)
+        if target_col not in df_features.columns:
+            raise KeyError(
+                f"El target '{target_col}' no existe en df_features. "
+                f"Revisa tu FeatureEngineer y/o config."
+            )
+
+        # ✅ Limpiar NaNs de target + features (sin bfill para evitar leakage)
+        feature_cols = self._get_model_feature_columns(df_features, target_col)
+        df_features = df_features.dropna(subset=[target_col] + feature_cols).copy()
+
+        # 2) Aplicar hold-out opcional (validation.mode) UNA sola vez
         val_cfg = self.config.get("validation", {})
         mode = str(val_cfg.get("mode", "none")).lower()
         n_holdout = int(val_cfg.get("n", 0))
 
         if mode == "last_n" and n_holdout > 0 and len(df_features) > n_holdout:
             df_bt = df_features.iloc[:-n_holdout].copy()
+            df_holdout = df_features.iloc[-n_holdout:].copy()  # opcional, por si luego lo usas
             self.logger.info(
                 f"🔒 Hold-out activado: se reservan los últimos {n_holdout} puntos "
-                f"({len(df_features) - n_holdout} usados para backtest)."
+                f"({len(df_bt)} usados para backtest)."
             )
         else:
             df_bt = df_features
+            df_holdout = None
             if mode == "last_n" and n_holdout > 0:
                 self.logger.warning(
                     f"validation.mode=last_n pero n={n_holdout} es mayor o igual "
@@ -321,32 +1743,12 @@ class TradingPipeline:
             else:
                 self.logger.info("Sin hold-out: se usa toda la serie para backtest.")
 
-        # 💾 Guardar features IN-SAMPLE para que _find_and_save_best_params
-        # pueda reentrenar y guardar modelos (solo con datos de backtest)
+        # 💾 Guardar features IN-SAMPLE para reentrenar modelos óptimos
         self._df_features_last_backtest = df_bt.copy()
-        
-        # 3.1. Opcional: reservar un hold-out final para TEST (no usado en backtest)
-        val_cfg = self.config.get("validation", {})
-        mode = val_cfg.get("mode", None)
-        n_holdout = int(val_cfg.get("n", 0)) if val_cfg.get("n") is not None else 0
-
-        if mode == "last_n" and n_holdout > 0 and len(df_features) > n_holdout:
-            df_backtest = df_features.iloc[:-n_holdout].copy()
-            self.logger.info(
-                f"🔒 Reservando los últimos {n_holdout} puntos como HOLD-OUT de TEST. "
-                f"Backtest usará {len(df_backtest)} puntos iniciales."
-            )
-        else:
-            df_backtest = df_features
-            if mode == "last_n" and n_holdout > 0:
-                self.logger.warning(
-                    "No se pudo aplicar hold-out (pocos datos o n_holdout muy grande). "
-                    "El backtest usará todo el dataset."
-                )
-
 
         # 3) Ejecutar tuning de hiperparámetros sobre df_bt (in-sample)
         self._run_hyperparameter_tuning(df_bt)
+
 
         self.logger.info("\n✅ MODO BACKTEST COMPLETADO")
 
@@ -373,16 +1775,14 @@ class TradingPipeline:
 
             grid = ParameterGrid(param_grid)
             model_results = []
-
-            # Para guardar la mejor serie de este modelo
-            best_rmse = np.inf
-            best_series = None  # dict con dates, y_true, y_pred, params
+            selection_rows = []
+            series_candidates = []
 
             for i, params in enumerate(grid):
                 self.logger.info(f"  -> Probando combinación {i+1}/{len(grid)}: {params}")
 
-                # ⬅️ Ahora recibimos también las fechas
-                predictions, true_values, timestamps = self._run_walk_forward_for_params(
+                # Devuelve predicciones, valores reales, fechas y filtro opcional de confirmación.
+                predictions, true_values, timestamps, trade_mask, confirmation_reasons = self._run_walk_forward_for_params(
                     df_features, model_name, params
                 )
 
@@ -390,30 +1790,50 @@ class TradingPipeline:
                     self.logger.warning("    No se generaron predicciones, saltando métricas.")
                     continue
 
-                metrics = self._calculate_metrics(true_values, predictions)
+                metrics = self._calculate_metrics(true_values, predictions, trade_mask=trade_mask)
                 self.logger.info(f"    - Métricas: {metrics}")
 
                 result_row = {"model": model_name, **params, **metrics}
                 model_results.append(result_row)
                 all_results.append(result_row)
-
-                # Actualizar "mejor serie" para este modelo
-                rmse = metrics.get("rmse", np.inf)
-                if rmse < best_rmse:
-                    best_rmse = rmse
-                    best_series = {
+                selection_rows.append({**result_row, "_artifact_idx": len(series_candidates)})
+                series_candidates.append(
+                    {
                         "dates": timestamps,
                         "y_true": true_values,
                         "y_pred": predictions,
+                        "trade_mask": trade_mask,
+                        "confirmation_reasons": confirmation_reasons,
                         "params": params,
                     }
+                )
 
-            # Guardar reporte detallado para este modelo
-            if model_results:
-                self._save_model_report(model_name, model_results)
+            # ==================== CAMBIO IMPORTANTE =====================
+            # Guardamos y graficamos la serie del run ganador según
+            # config.model_selection, no según una métrica hardcodeada.
+            best_series = None
+            if selection_rows:
+                best_row = self._select_best_run(
+                    pd.DataFrame(selection_rows),
+                    model_name=model_name,
+                    log_prefix="  -> Serie best ",
+                )
+                if best_row is not None and "_artifact_idx" in best_row.index:
+                    best_series = series_candidates[int(best_row["_artifact_idx"])]
 
-            # Generar gráfico para la mejor combinación de este modelo
             if best_series is not None:
+                # Guardar CSV con la serie de backtest del mejor run
+                self._save_backtest_series(
+                    model_name=model_name,
+                    params=best_series["params"],
+                    y_true=best_series["y_true"],
+                    y_pred=best_series["y_pred"],
+                    dates=best_series["dates"],  # <-- AQUÍ VA 'dates'
+                    trade_mask=best_series.get("trade_mask"),
+                    confirmation_reason=best_series.get("confirmation_reasons"),
+                )
+
+                # Generar gráfico para la mejor combinación de este modelo
                 self._plot_predictions_series(
                     dates=best_series["dates"],
                     y_true=best_series["y_true"],
@@ -422,11 +1842,16 @@ class TradingPipeline:
                     params=best_series["params"],
                     suffix="_best",
                 )
+            # ==================== FIN CAMBIO IMPORTANTE =====================
+
+            # Guardar reporte detallado para este modelo (como antes)
+            if model_results:
+                self._save_model_report(model_name, model_results)
 
         # Guardar resumen consolidado y config optimizada (como ya tenías)
         if all_results:
             self._save_consolidated_summary(all_results)
-            self._find_and_save_best_params(all_results)
+            self._find_and_save_best_params(all_results, df_features)
 
 
     def _run_test_mode(self) -> None:
@@ -448,7 +1873,7 @@ class TradingPipeline:
         mode = val_cfg.get("mode", "last_n")
         n = int(val_cfg.get("n", 500))
 
-        target_col = self.config.get("backtest", {}).get("target", "Return_1")
+        target_col = self.config.get("backtest", {}).get("target", "ReturnFwd_1")
 
         df_processed = df_features.dropna(subset=[target_col]).bfill().ffill()
         if len(df_processed) <= n + 10:
@@ -458,7 +1883,7 @@ class TradingPipeline:
         df_train = df_processed.iloc[:-n]
         df_test = df_processed.iloc[-n:]
 
-        features_cols = [c for c in df_processed.columns if c != target_col]
+        features_cols = self._get_model_feature_columns(df_processed, target_col)
         X_train_full = df_train[features_cols]
         y_train_full = df_train[target_col]
         X_test_full = df_test[features_cols]
@@ -478,15 +1903,21 @@ class TradingPipeline:
         # 6. Validación tipo walk-forward sobre df_test
         all_pred = []
         all_true = []
+        trade_mask = []
         bt_rows = []
         close_prices = df_processed["Close"] if "Close" in df_processed.columns else None
 
         # Entrenamos una vez con df_train completo y vamos moviendo la ventana sobre df_test
         model_class_map = {
             "RandomWalk": RandomWalkModel,
+            "RandomWalkModel": RandomWalkModel,
+            "Momentum": MomentumModel,
+            "MomentumModel": MomentumModel,
             "ARIMA": ArimaModel,
             "PROPHET": ProphetModel,
             "LSTM": LSTMModel,
+            "RandomForestRegressor": RandomForestRegressorModel,
+            "HistGradientBoosting": HistGradientBoostingRegressorModel,
         }
         model_class = model_class_map.get(model_name)
         if model_class is None:
@@ -495,6 +1926,16 @@ class TradingPipeline:
 
         # Entrenar modelo una vez con todo df_train
         model_instance = model_class(params=params, logger=self.logger)
+        trading_cfg = self.config.get("trading", {}) or {}
+        pip_size = float(self.config.get("backtest", {}).get("pip_size", 0.0001))
+        min_pips_signal = float(
+            trading_cfg.get(
+                "min_pips_signal",
+                self.config.get("backtest", {}).get("threshold_pips", 0.0),
+            )
+        )
+        enable_confidence_filter = bool(trading_cfg.get("enable_confidence_filter", False))
+        min_confidence = float(trading_cfg.get("min_confidence", 0.60))
         # Truco: usamos train_and_predict iterativamente con X_test de tamaño 1
         for ts in X_test_full.index:
             # Ventana de entrenamiento = todo hasta ts-1
@@ -514,14 +1955,25 @@ class TradingPipeline:
             all_pred.append(pred)
             all_true.append(true_val)
 
+            signal_info = build_signal_from_prediction(
+            pred_return=pred,
+            pip_size=pip_size,
+            min_pips_signal=min_pips_signal,
+            model_metrics={},
+            min_confidence=min_confidence if enable_confidence_filter else 0.0,
+            probability=None,
+        )
+
+            signal = str(signal_info["signal"])
+            confidence = float(signal_info["confidence"])
+            confirmation = self._evaluate_signal_confirmation(
+                signal=signal,
+                feature_row=X_te.iloc[0] if not X_te.empty else None,
+            )
+            trade_allowed = signal in {"BUY", "SELL"} and bool(confirmation.get("passed", True))
+
             true_sign = np.sign(true_val)
             pred_sign = np.sign(pred)
-            if pred_sign > 0:
-                signal = "BUY"
-            elif pred_sign < 0:
-                signal = "SELL"
-            else:
-                signal = "HOLD"
 
             price_prev = price_true = price_pred = delta_price = np.nan
             if close_prices is not None:
@@ -539,18 +1991,22 @@ class TradingPipeline:
                 "direction_true": int(true_sign),
                 "direction_pred": int(pred_sign),
                 "signal": signal,
+                "confidence": confidence,
+                "trade_allowed": trade_allowed,
+                "signal_filter_reason": confirmation.get("reason"),
                 "price_prev": price_prev,
                 "price_true": price_true,
                 "price_pred": price_pred,
                 "delta_price": delta_price,
             })
+            trade_mask.append(trade_allowed)
 
         if not all_pred:
             self.logger.error("No se generaron predicciones en validación.")
             return
 
         # 7. Métricas de validación
-        metrics = self._calculate_metrics(all_true, all_pred)
+        metrics = self._calculate_metrics(all_true, all_pred, trade_mask=trade_mask)
         self.logger.info(f"📊 Métricas de VALIDACIÓN para {model_name}: {metrics}")
 
         # 8. Guardar Excel consolidado (detalle + métricas)
@@ -568,7 +2024,7 @@ class TradingPipeline:
         self.logger.info(f"💾 Archivo de validación guardado en: {xlsx_path}")
         self.logger.info("\n✅ MODO TEST / VALIDACIÓN COMPLETADO")
         
-    def _find_and_save_best_params(self, all_results: list[dict[str, Any]]) -> None:
+    def _find_and_save_best_params(self, all_results: list[dict], df_features: pd.DataFrame) -> None:
         """
         A partir de todas las combinaciones evaluadas en el backtest:
         - Identifica la mejor por modelo usando las métricas de model_selection.
@@ -592,14 +2048,22 @@ class TradingPipeline:
             "mae",
             "hit_rate",
             "accuracy",
+            "f1_score",
+            "precision",
+            "recall",
             "dm_stat",
             "dm_pvalue",
             "sharpe",
             "sortino",
+            "calmar",
             "max_drawdown",
             "profit_factor",
             "win_rate",
             "payoff_ratio",
+            "consistency_ratio",
+            "avg_trade_return",
+            "n_test_points",
+            "n_trades",
         ]
 
         best_models: list[dict[str, Any]] = []
@@ -621,106 +2085,76 @@ class TradingPipeline:
             return v
 
         # 2. Configuración de cómo se escoge el "mejor" modelo
-        selection_cfg = self.config.get("model_selection", {})
-        primary_metric = selection_cfg.get("primary_metric", "rmse")
-        primary_greater_is_better = selection_cfg.get("primary_greater_is_better", False)
-        secondary_metric = selection_cfg.get("secondary_metric", None)
-        secondary_greater_is_better = selection_cfg.get("secondary_greater_is_better", True)
+        selection_cfg = self._get_model_selection_settings()
+        primary_metric = selection_cfg["primary_metric"]
+        secondary_metric = selection_cfg["secondary_metric"]
+        best_rows_for_global: list[dict[str, Any]] = []
 
         # 3. Por cada modelo (ARIMA, PROPHET, LSTM, RandomWalk, etc.) encontrar la mejor fila
-        for model_name in df["model"].unique():
+        for model_name in df["model"].dropna().unique():
             model_df = df[df["model"] == model_name].copy()
-
             if model_df.empty:
                 continue
 
-            # Construir criterios de ordenamiento dinámicos
-            sort_by: list[str] = []
-            ascending: list[bool] = []
-
-            if primary_metric in model_df.columns:
-                sort_by.append(primary_metric)
-                ascending.append(not primary_greater_is_better)
-
-            if secondary_metric and secondary_metric in model_df.columns:
-                sort_by.append(secondary_metric)
-                ascending.append(not secondary_greater_is_better)
-
-            # Fallback si no se encuentra nada: usar rmse si existe
-            if not sort_by:
-                if "rmse" in model_df.columns:
-                    sort_by = ["rmse"]
-                    ascending = [True]  # menor rmse mejor
-                else:
-                    # último fallback: no sabemos qué métrica usar,
-                    # nos quedamos con la primera fila tal cual
-                    self.logger.warning(
-                        f"  -> Modelo {model_name} sin métricas reconocidas para ordenar; "
-                        "se toma la primera fila."
-                    )
-                    best_run = model_df.iloc[0]
-                    # Hiperparámetros = todas las columnas excepto métricas + 'model'
-                    param_cols = [c for c in model_df.columns if c not in metric_cols + ["model"]]
-                    raw_params = {k: best_run[k] for k in param_cols}
-                    clean_params = {
-                        k: to_native(v)
-                        for k, v in raw_params.items()
-                        if not is_nan(v)
-                    }
-                    best_models.append(
-                        {"name": model_name, "enabled": True, "params": clean_params}
-                    )
-                    continue
-
-            # Ordenar según las métricas seleccionadas
-            model_df = model_df.sort_values(by=sort_by, ascending=ascending)
-            best_run = model_df.iloc[0]
+            best_run = self._select_best_run(
+                model_df,
+                model_name=model_name,
+                log_prefix="  -> Selección ",
+            )
+            if best_run is None:
+                continue
 
             # Hiperparámetros = todas las columnas excepto métricas + 'model'
             param_cols = [c for c in model_df.columns if c not in metric_cols + ["model"]]
             raw_params = {k: best_run[k] for k in param_cols}
 
-            clean_params = {
-                k: to_native(v)
-                for k, v in raw_params.items()
-                if not is_nan(v)
-            }
+            clean_params = {k: to_native(v) for k, v in raw_params.items() if not is_nan(v)}
 
-            # Para el log, si existe rmse lo mostramos
-            best_rmse = best_run["rmse"] if "rmse" in best_run.index else None
-            if best_rmse is not None:
-                self.logger.info(
-                    f"  -> Mejor para {model_name}: RMSE={float(best_rmse):.6f} "
-                    f"con params={clean_params}"
-                )
-            else:
-                self.logger.info(
-                    f"  -> Mejor para {model_name} (sin RMSE) con params={clean_params}"
-                )
+            # Log informativo
+            p_val = best_run[primary_metric] if primary_metric in best_run.index else None
+            s_val = best_run[secondary_metric] if secondary_metric in best_run.index else None
+            t_val = best_run["n_trades"] if "n_trades" in best_run.index else None
 
-            best_models.append(
-                {
-                    "name": model_name,
-                    "enabled": True,
-                    "params": clean_params,
-                }
+            self.logger.info(
+                f"  -> Mejor para {model_name}: "
+                f"{primary_metric}={to_native(p_val)} | {secondary_metric}={to_native(s_val)} | "
+                f"n_trades={to_native(t_val)} | params={clean_params}"
             )
+
+            best_rows_for_global.append(best_run.to_dict())
+            best_models.append({"name": model_name, "enabled": True, "params": clean_params})
 
         if not best_models:
             self.logger.warning("No se encontró ningún mejor modelo para guardar en config_optimizado.")
             return
+
+        global_champion_name = None
+        if best_rows_for_global:
+            champion_row = self._select_best_run(
+                pd.DataFrame(best_rows_for_global),
+                log_prefix="  -> Campeón global ",
+            )
+            if champion_row is not None and "model" in champion_row.index:
+                global_champion_name = str(champion_row["model"])
+                self.logger.info(f"🏆 Modelo campeón global: {global_champion_name}")
+
+        self._global_champion = global_champion_name
+        for model_cfg in best_models:
+            model_cfg["is_best"] = bool(
+                global_champion_name and str(model_cfg.get("name")) == global_champion_name
+            )
+
+        release_id = self._ensure_backtest_run_label()
 
         # 4. Construir config optimizado: copiamos config actual y reemplazamos sólo la sección de modelos
         optimized_config = dict(self.config)
         optimized_config["models"] = best_models
 
         base_config_path = Path(self.config_path)
-        optimized_config_path = base_config_path.parent / "config_optimizado.yaml"
+        versioned_config_path = base_config_path.parent / f"config_optimizado_{release_id}.yaml"
+        self._write_yaml_atomic(versioned_config_path, optimized_config)
 
-        with open(optimized_config_path, "w", encoding="utf-8") as f:
-            yaml.dump(optimized_config, f, default_flow_style=False, sort_keys=False)
-
-        self.logger.info(f"\n💾 Configuración optimizada guardada en: {optimized_config_path}")
+        self.logger.info(f"\n💾 Configuración optimizada versionada guardada en: {versioned_config_path}")
 
         # 5. Reentrenar y guardar modelos finales (si tenemos features del último backtest)
         if self._df_features_last_backtest is None:
@@ -730,7 +2164,7 @@ class TradingPipeline:
             )
             return
 
-        target_col = self.config.get("backtest", {}).get("target", "Return_1")
+        target_col = self.config.get("backtest", {}).get("target", "ReturnFwd_1")
 
         df_proc = (
             self._df_features_last_backtest
@@ -746,18 +2180,24 @@ class TradingPipeline:
             )
             return
 
-        X_full = df_proc.drop(columns=[target_col])
+        feature_cols = self._get_model_feature_columns(df_proc, target_col)
+        X_full = df_proc[feature_cols]
         y_full = df_proc[target_col]
 
-        models_dir = Path("outputs") / "models"
-        models_dir.mkdir(parents=True, exist_ok=True)
+        models_dir = self._get_release_models_dir(release_id)
 
         model_class_map = {
             "RandomWalk": RandomWalkModel,
+            "RandomWalkModel": RandomWalkModel,
+            "Momentum": MomentumModel,
+            "MomentumModel": MomentumModel,
             "ARIMA": ArimaModel,
             "PROPHET": ProphetModel,
             "LSTM": LSTMModel,
+            "RandomForestRegressor": RandomForestRegressorModel,
+            "HistGradientBoosting": HistGradientBoostingRegressorModel,
         }
+        
 
         self.logger.info("\n🧠 Reentrenando y guardando modelos óptimos...")
 
@@ -790,196 +2230,217 @@ class TradingPipeline:
                     "Se omite el guardado en disco."
                 )
 
-        self.logger.info("\n✅ Proceso de optimización y guardado de modelos completado.")
+        self._publish_active_release(
+            release_id=release_id,
+            optimized_config=optimized_config,
+            versioned_config_path=versioned_config_path,
+            models_dir=models_dir,
+            champion_name=global_champion_name,
+            profile_name=self._get_strategy_profile_name(),
+        )
 
-    
+        self.logger.info("\n✅ Proceso de optimización y guardado de modelos completado.")
+        
     def _save_model_report(self, model_name: str, model_results: list[dict]) -> None:
         """Guarda el reporte detallado de un modelo en un archivo CSV."""
         if not model_results:
             return
 
-        output_dir = Path(self.config.get("output", {}).get("dir", "outputs")) / "backtest"
-        output_dir.mkdir(parents=True, exist_ok=True)
+        output_dir = self._get_backtest_output_dir()
         
         report_path = output_dir / f"report_{model_name}.csv"
         df_report = pd.DataFrame(model_results)
         
-        # Ordenar por la métrica principal (RMSE)
-        if "rmse" in df_report.columns:
-            df_report = df_report.sort_values(by="rmse", ascending=True)
+        # Ordenar usando criterios de selección (primario y secundario)
+        ms = self.config.get("model_selection", {}) or {}
+        primary = ms.get("primary_metric", "hit_rate")
+        secondary = ms.get("secondary_metric", "rmse")
+        primary_greater = bool(ms.get("primary_greater_is_better", True))
+        secondary_greater = bool(ms.get("secondary_greater_is_better", False))
+
+        # Asegurar numéricos para ordenar
+        for c in [primary, secondary, "n_trades"]:
+            if c in df_report.columns:
+                df_report[c] = pd.to_numeric(df_report[c], errors="coerce")
+
+        sort_cols = []
+        ascending = []
+
+        if primary in df_report.columns:
+            sort_cols.append(primary)
+            ascending.append(not primary_greater)  # hit_rate: desc
+
+        if secondary in df_report.columns:
+            sort_cols.append(secondary)
+            ascending.append(not secondary_greater)  # rmse: asc
+
+        # Desempate: preferir más trades si existe
+        if "n_trades" in df_report.columns:
+            sort_cols.append("n_trades")
+            ascending.append(False)
+
+        if sort_cols:
+            df_report = df_report.sort_values(by=sort_cols, ascending=ascending, na_position="last")
+
             
         df_report.to_csv(report_path, index=False)
         self.logger.info(f"    💾 Reporte para {model_name} guardado en: {report_path}")
+        self._archive_backtest_artifact(report_path)
+        
+    def _save_backtest_series(
+        self,
+        model_name: str,
+        params: Dict[str, Any],
+        y_true: List[float],
+        y_pred: List[float],
+        # CAMBIO: dates ahora es OPCIONAL (tiene default = None)
+        dates: Optional[List[pd.Timestamp]] = None,
+        trade_mask: Optional[List[bool]] = None,
+        confirmation_reason: Optional[List[str]] = None,
+    ) -> None:
+        """
+        Guarda la serie completa de backtest (y_true, y_pred, error y fechas opcionales)
+        para poder graficar después los errores / predicciones.
 
-    def _save_consolidated_summary(self, all_results: list[dict]) -> None:
-        """Guarda un resumen consolidado de todos los modelos."""
+        Se guarda en:
+            outputs/backtest/{model_name}_{param_suffix}_series.csv
+        """
+
+        # ==================== NUEVO: construir DataFrame ====================
+        data = {
+            "y_true": y_true,
+            "y_pred": y_pred,
+        }
+
+        # Si recibimos fechas y tienen la misma longitud, las incluimos
+        if dates is not None and len(dates) == len(y_true):
+            data["date"] = dates
+        if trade_mask is not None and len(trade_mask) == len(y_true):
+            data["trade_allowed"] = trade_mask
+        if confirmation_reason is not None and len(confirmation_reason) == len(y_true):
+            data["signal_filter_reason"] = confirmation_reason
+
+        df_series = pd.DataFrame(data)
+        df_series["error"] = df_series["y_true"] - df_series["y_pred"]
+        # ===================================================================
+
+        # ==================== IGUAL QUE ANTES: sufijo params ===============
+        if params:
+            # Convertir params en un sufijo legible para el nombre del archivo
+            param_parts = []
+            for k, v in params.items():
+                param_parts.append(f"{k}-{str(v)}")
+            param_suffix = "_".join(param_parts)
+        else:
+            param_suffix = "default"
+        # ===================================================================
+
+        # ==================== CAMBIO IMPORTANTE AQUÍ ========================
+        # ANTES usábamos: self.paths["backtest_dir"]  -> pero self.paths NO existe
+        # Usamos un directorio fijo dentro de 'outputs/backtest'
+        backtest_dir = self._get_backtest_output_dir()
+
+        file_name = f"{model_name}_{param_suffix}_series.csv"
+        file_path = backtest_dir / file_name
+        # ===================================================================
+
+        # Guardar CSV
+        df_series.to_csv(file_path, index=False)
+        self.logger.info(f"      ↳ Serie completa guardada en: {file_path}")
+        self._archive_backtest_artifact(file_path)
+
+
+    def _save_consolidated_summary(self, all_results) -> None:
+        """Guarda un resumen consolidado (best run por modelo).
+
+        Soporta:
+        - list[dict] (una fila por run)
+        - dict[str, list[dict]] (modelo -> runs)
+        """
         if not all_results:
             return
 
-        # Carpeta de salida (incluyendo subcarpeta backtest)
-        output_root = Path(self.config.get("output", {}).get("dir", "outputs"))
-        output_dir = output_root / "backtest"
+        output_dir = Path(self.config.get("output", {}).get("dir", "outputs")) / "backtest"
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        df_summary = pd.DataFrame(all_results)
-
-        # Agrupar por modelo y obtener la mejor ejecución para cada uno (menor RMSE)
-        best_runs = df_summary.loc[df_summary.groupby("model")["rmse"].idxmin()].copy()
-
-        # 🔹 Seleccionar campeón global ANTES de guardar
-        champion = self._select_global_champion(best_runs)
-        if champion is not None:
-            self._global_champion = champion
-
-            # Nueva columna booleana: sólo TRUE para el campeón global
-            best_runs["is_global_champion"] = False
-            best_runs.loc[
-                best_runs["model"] == champion.get("model"),
-                "is_global_champion"
-            ] = True
-
-            self.logger.info(
-                "🏅 Campeón global del backtest: "
-                f"{champion.get('model')} | "
-                f"hit_rate={champion.get('hit_rate')} | "
-                f"rmse={champion.get('rmse')} | "
-                f"sharpe={champion.get('sharpe')} | "
-                f"n_trades={champion.get('n_trades')}"
-            )
+        # --- Normalizar resultados a una lista de filas ---
+        rows = []
+        if isinstance(all_results, dict):
+            for model_name, runs in all_results.items():
+                if runs is None:
+                    continue
+                if isinstance(runs, dict):
+                    runs = [runs]
+                for r in runs:
+                    if r is None:
+                        continue
+                    row = dict(r)
+                    row.setdefault("model", model_name)
+                    rows.append(row)
+        elif isinstance(all_results, list):
+            rows = [dict(r) for r in all_results if r is not None]
         else:
-            self.logger.info("No se pudo determinar un campeón global.")
-        
-        # Guardar CSV
-        summary_path = output_dir / "summary_best_runs.csv"
-        best_runs.to_csv(summary_path, index=False, encoding="utf-8-sig")
-        self.logger.info(
-            f"\n📄 Resumen consolidado de mejores ejecuciones guardado en: {summary_path}"
-        )
-
-        # OPCIONAL: Guardar también en Excel
-        output_formats = self.config.get("output", {}).get("formats", [])
-        if "excel" in output_formats:
-            excel_path = output_dir / "summary_best_runs.xlsx"
-            best_runs.to_excel(excel_path, index=False)
-            self.logger.info(f"📊 Resumen consolidado guardado también en Excel: {excel_path}")
-
-            """Guarda un resumen consolidado de todos los modelos."""
-            if not all_results:
+            try:
+                rows = [dict(r) for r in list(all_results) if r is not None]
+            except Exception as e:
+                self.logger.error(f"No fue posible construir el resumen consolidado: {e}")
                 return
 
-            output_dir = Path(self.config.get("output", {}).get("dir", "outputs")) / "backtest"
-            summary_path = output_dir / "summary_best_runs.csv"
-            
-            df_summary = pd.DataFrame(all_results)
-            # Agrupar por modelo y obtener la mejor ejecución para cada uno (menor RMSE)
-            best_runs = df_summary.loc[df_summary.groupby('model')['rmse'].idxmin()]
-            best_runs.to_csv(summary_path, index=False)
-            self.logger.info(f"\n📄 Resumen consolidado de mejores ejecuciones guardado en: {summary_path}")
-            
-            # OPCIONAL: Guardar también en Excel
-            output_formats = self.config.get("output", {}).get("formats", [])
-            if "excel" in output_formats:
-                excel_path = output_dir / "summary_best_runs.xlsx"
-                best_runs.to_excel(excel_path, index=False)
-                self.logger.info(f"📊 Resumen consolidado guardado también en Excel: {excel_path}")
-            
-            # 🔹 NUEVO: seleccionar y guardar el campeón global
-            champion = self._select_global_champion(best_runs)
-            if champion is not None:
-                self._global_champion = champion
-                self.logger.info(
-                    "🏅 Campeón global del backtest: "
-                    f"{champion.get('model')} | "
-                    f"hit_rate={champion.get('hit_rate')} | "
-                    f"rmse={champion.get('rmse')} | "
-                    f"sharpe={champion.get('sharpe')} | "
-                    f"n_trades={champion.get('n_trades')}"
-                )
-            else:
-                self.logger.info("No se pudo determinar un campeón global.")
-                
-    def _select_global_champion(self, best_runs: pd.DataFrame) -> dict | None:
-        """
-        A partir del DataFrame resumen de mejores corridas por modelo
-        (summary_best_runs / best_runs), selecciona un "campeón global".
+        if not rows:
+            return
 
-        Criterio por defecto:
-        - Filtra modelos con al menos `min_trades` operaciones (config.model_selection.min_trades, por defecto 10).
-        - Ordena por:
-            1) hit_rate  (desc, mayor es mejor)
-            2) sharpe    (desc, mayor es mejor)
-            3) rmse      (asc, menor es mejor)
+        df = pd.DataFrame(rows)
+        if df.empty:
+            return
 
-        Devuelve un dict con la fila del campeón (incluyendo 'model' y las métricas),
-        o None si no se puede seleccionar.
-        """
-        if best_runs is None or best_runs.empty:
-            self.logger.warning("No hay filas en best_runs para seleccionar campeón global.")
-            return None
+        if "model" not in df.columns:
+            self.logger.warning("Resumen consolidado omitido: no existe la columna 'model' en los resultados.")
+            return
 
-        df = best_runs.copy()
+        # Forzar numérico en métricas clave
+        for c in {"rmse", "hit_rate", "n_trades", "n_test_points"}:
+            if c in df.columns:
+                df[c] = pd.to_numeric(df[c], errors="coerce")
 
-        # Asegurar que las columnas clave sean numéricas si existen
-        for col in ["hit_rate", "sharpe", "rmse", "n_trades"]:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
-
-        # Leer min_trades desde config, con valor por defecto
-        model_sel_cfg = self.config.get("model_selection", {})
-        min_trades = model_sel_cfg.get("min_trades", 10)
-
-        # Filtrar por número mínimo de trades (si la columna existe)
-        if "n_trades" in df.columns:
-            df_filtered = df[df["n_trades"].fillna(0) >= min_trades]
-            if df_filtered.empty:
-                self.logger.warning(
-                    f"No hay modelos con al menos {min_trades} trades. "
-                    "Se seleccionará el campeón entre todos los modelos sin filtrar."
-                )
-            else:
-                df = df_filtered
-
-        # Construir criterios de orden
-        sort_by: list[str] = []
-        ascending: list[bool] = []
-
-        if "hit_rate" in df.columns:
-            sort_by.append("hit_rate")
-            ascending.append(False)  # mayor mejor
-
-        if "sharpe" in df.columns:
-            sort_by.append("sharpe")
-            ascending.append(False)  # mayor mejor
-
-        if "rmse" in df.columns:
-            sort_by.append("rmse")
-            ascending.append(True)   # menor mejor
-
-        if not sort_by:
-            self.logger.warning(
-                "No se encontraron columnas de métricas (hit_rate/sharpe/rmse) "
-                "para ordenar el campeón global."
+        best_rows = []
+        for model_name in df["model"].dropna().unique():
+            best_row = self._select_best_run(
+                df[df["model"] == model_name].copy(),
+                model_name=model_name,
+                log_prefix="Resumen ",
             )
-            return None
+            if best_row is None:
+                continue
+            best_rows.append(best_row.to_dict())
 
-        df_sorted = df.sort_values(by=sort_by, ascending=ascending)
-        champion_row = df_sorted.iloc[0]
+        if not best_rows:
+            return
 
-        # Convertir la fila a tipos nativos de Python
-        champion = {}
-        for k, v in champion_row.to_dict().items():
-            if isinstance(v, (np.floating,)):
-                champion[k] = float(v)
-            elif isinstance(v, (np.integer,)):
-                champion[k] = int(v)
-            elif isinstance(v, (np.bool_,)):
-                champion[k] = bool(v)
-            else:
-                champion[k] = v
+        best_runs = pd.DataFrame(best_rows)
+        champion_row = self._select_best_run(best_runs.copy(), log_prefix="Resumen global ")
+        champion_model = None
+        if champion_row is not None and "model" in champion_row.index:
+            champion_model = str(champion_row["model"])
+        if champion_model and "model" in best_runs.columns:
+            best_runs["is_best"] = best_runs["model"].astype(str) == champion_model
 
-        return champion
+        # Guardar outputs
+        csv_path = output_dir / "summary_best_runs.csv"
+        best_runs.to_csv(csv_path, index=False)
+        self.logger.info(f"📄 Resumen consolidado guardado en: {csv_path}")
+        csv_archive_path = self._archive_backtest_artifact(csv_path)
+        self._latest_backtest_summary_paths["csv"] = csv_archive_path or csv_path
 
-
+        xlsx_path = output_dir / "summary_best_runs.xlsx"
+        try:
+            best_runs.to_excel(xlsx_path, index=False)
+            self.logger.info(f"📄 Resumen consolidado guardado en: {xlsx_path}")
+            xlsx_archive_path = self._archive_backtest_artifact(xlsx_path)
+            self._latest_backtest_summary_paths["xlsx"] = xlsx_archive_path or xlsx_path
+        except Exception as e:
+            self.logger.warning(f"No se pudo guardar XLSX del resumen: {e}")
+            self._latest_backtest_summary_paths["xlsx"] = None
+            
     def _run_walk_forward_for_params(
         self,
         df_features: pd.DataFrame,
@@ -988,15 +2449,21 @@ class TradingPipeline:
     ) -> tuple[list, list, list]:
         """Ejecuta un backtest Walk-Forward para una configuración de modelo específica."""
         backtest_config = self.config.get("backtest", {})
-        initial_train_size = backtest_config.get("initial_train", 800)
-        step = backtest_config.get("step", 20)
-        target_col = backtest_config.get("target", "Return_1")
+        initial_train_size = int(backtest_config.get("initial_train", 800))
+        step = int(backtest_config.get("step", 20))
+        horizon = int(backtest_config.get("horizon", 1))
+        target_col = backtest_config.get("target", "ReturnFwd_1")
 
-        # 1. Limpiar NaNs (target obligatorio)
-        df_processed = df_features.dropna(subset=[target_col])
-        df_processed = df_processed.bfill().ffill()
+        # 1) Definir features (basado en df_features)
+        features_cols = self._get_model_feature_columns(df_features, target_col)
 
-        features_cols = [col for col in df_features.columns if col != target_col]
+        # 2) Eliminar filas con NaNs en target + features (robusto para rolling indicators)
+        df_processed = df_features.dropna(subset=[target_col] + features_cols).copy()
+
+        if df_processed.empty:
+            self.logger.warning("    -> df_processed quedó vacío tras dropna de target+features.")
+            return [], [], [], [], []
+
         y = df_processed[target_col]
         X = df_processed[features_cols]
 
@@ -1006,15 +2473,25 @@ class TradingPipeline:
                 f"initial_train_size={initial_train_size}. "
                 f"Datos disponibles después de limpiar NaNs: {len(X)}. Saltando combinación."
             )
-            return [], [], []
+            return [], [], [], [], []
+
+        # 3) Resolver timestamps: columna Date si existe, si no índice
+        if "Date" in df_processed.columns:
+            ts_all = pd.to_datetime(df_processed["Date"], errors="coerce")
+        else:
+            ts_all = pd.to_datetime(df_processed.index, errors="coerce")
 
         all_predictions: list = []
         all_true_values: list = []
         all_timestamps: list = []
+        all_trade_mask: list[bool] = []
+        all_confirmation_reasons: list[str] = []
+        pip_size = float(backtest_config.get("pip_size", 0.0001))
+        threshold_pips = float(backtest_config.get("threshold_pips", 0.0))
 
-        for i in range(initial_train_size, len(X), step):
+        for i in range(initial_train_size, len(X) - horizon + 1, step):
             train_end = i
-            test_end = i + 1  # un paso adelante
+            test_end = i + horizon
 
             X_train, X_test = X.iloc[:train_end], X.iloc[train_end:test_end]
             y_train, y_test = y.iloc[:train_end], y.iloc[train_end:test_end]
@@ -1034,23 +2511,55 @@ class TradingPipeline:
 
             prediction = self._train_and_predict(model_name, params, X_train, y_train, X_test)
 
-            if prediction is not None:
-                all_predictions.extend(prediction)
-                all_true_values.extend(y_test.values)
-                # ⬅️ Guardamos también la fecha correspondiente a ese y_test
-                all_timestamps.extend(y_test.index.to_list())
+            # Normalizar salida a lista con misma longitud que y_test
+            if prediction is None:
+                pred_list = [np.nan] * len(y_test)
+            elif isinstance(prediction, (list, tuple, np.ndarray)):
+                pred_list = list(prediction)
+                if len(pred_list) != len(y_test):
+                    # si devuelve algo raro, usamos el último valor como constante
+                    last = pred_list[-1] if len(pred_list) else np.nan
+                    pred_list = [last] * len(y_test)
+            else:
+                pred_list = [float(prediction)] * len(y_test)
 
-        return all_predictions, all_true_values, all_timestamps
+            for pred_value, (_, x_row), true_value, y_index in zip(
+                pred_list,
+                X_test.iterrows(),
+                y_test.values.tolist(),
+                y_test.index.tolist(),
+            ):
+                candidate_signal = "HOLD"
+                if pip_size > 0 and abs(float(pred_value) / pip_size) >= threshold_pips:
+                    candidate_signal = "BUY" if float(pred_value) > 0 else "SELL"
+
+                confirmation = self._evaluate_signal_confirmation(
+                    signal=candidate_signal,
+                    feature_row=x_row,
+                )
+                trade_allowed = candidate_signal in {"BUY", "SELL"} and bool(confirmation.get("passed", True))
+
+                all_predictions.append(pred_value)
+                all_true_values.append(true_value)
+                all_timestamps.append(pd.to_datetime(y_index, errors="coerce"))
+                all_trade_mask.append(trade_allowed)
+                all_confirmation_reasons.append(str(confirmation.get("reason", "confirmation_disabled")))
+
+        return all_predictions, all_true_values, all_timestamps, all_trade_mask, all_confirmation_reasons
 
     def _train_and_predict(self, model_name: str, params: dict, X_train: pd.DataFrame, y_train: pd.Series, X_test: pd.DataFrame) -> list | None:
         """Punto central para entrenar y predecir con un modelo específico."""
         
         model_map = {
-            "RandomWalk": RandomWalkModel, # Lo mantenemos con el nombre original en config.yaml
+            "RandomWalk": RandomWalkModel,
+            "RandomWalkModel": RandomWalkModel,
+            "Momentum": MomentumModel,
+            "MomentumModel": MomentumModel,
             "ARIMA": ArimaModel,
-            "PROPHET": ProphetModel, # Ahora apunta a la nueva clase
+            "PROPHET": ProphetModel,
             "LSTM": LSTMModel,
-            # "RandomForest": RandomForestModel # Podrías crear este archivo también
+            "RandomForestRegressor": RandomForestRegressorModel,
+            "HistGradientBoosting": HistGradientBoostingRegressorModel,
         }
 
         model_class = model_map.get(model_name)
@@ -1069,11 +2578,11 @@ class TradingPipeline:
             self.logger.error(f"Error al ejecutar {model_name}: {e}")
             return None
 
-    def _calculate_metrics(self, y_true: list, y_pred: list) -> dict:
+    def _calculate_metrics(self, y_true: list, y_pred: list, trade_mask: list[bool] | None = None) -> dict:
         """
         Calcula un conjunto de métricas de evaluación.
 
-        - Calcula todas las métricas disponibles en utils.metrics.calculate_all_metrics.
+        - Calcula todas las métricas disponibles en utils.metrics_v2.calculate_all_metrics.
         - Aplica un umbral de pips (backtest.threshold_pips) para las métricas de TRADING.
         - Filtra las métricas a las listadas en config['backtest']['metrics'].
         """
@@ -1104,6 +2613,7 @@ class TradingPipeline:
             periods_per_year=periods_per_year,
             pip_size=pip_size,
             threshold_pips=threshold_pips,
+            active_mask_override=trade_mask,
         )
 
         # Lista de métricas a usar según la configuración
@@ -1231,7 +2741,7 @@ class TradingPipeline:
             # Comportamiento original: graficar retornos directamente
             series_real = df_plot["y_true"]
             series_pred = df_plot["y_pred"]
-            ylabel = self.config.get("backtest", {}).get("target", "Return_1")
+            ylabel = self.config.get("backtest", {}).get("target", "ReturnFwd_1")
 
         # --- Gráfico ---
         fig, ax = plt.subplots(figsize=(12, 6))
@@ -1252,20 +2762,23 @@ class TradingPipeline:
         else:
             fname = f"{model_name}{suffix}.png"
 
-        fig.savefig(output_dir / fname, dpi=150, bbox_inches="tight")
+        plot_path = output_dir / fname
+        fig.savefig(plot_path, dpi=150, bbox_inches="tight")
         plt.close(fig)
 
-        self.logger.info(f"📊 Gráfico de predicciones guardado en: {output_dir / fname}")
+        self.logger.info(f"📊 Gráfico de predicciones guardado en: {plot_path}")
+        self._archive_backtest_artifact(plot_path)
 
 
 
     def _validate_model_on_test(self, model_name: str, params: dict, df_train: pd.DataFrame, y_test: pd.Series, X_test: pd.DataFrame):
         """Entrena un modelo con datos de train y lo valida contra test."""
-        target_col = self.config.get("backtest", {}).get("target", "Return_1")
+        target_col = self.config.get("backtest", {}).get("target", "ReturnFwd_1")
         
         # Preparar datos de entrenamiento completos
         y_train = df_train[target_col]
-        X_train = df_train.drop(columns=[target_col])
+        feature_cols = self._get_model_feature_columns(df_train, target_col)
+        X_train = df_train[feature_cols]
 
         # Entrenar y predecir en el conjunto de test
         # Para una validación real, se cargaría el modelo guardado.
@@ -1292,9 +2805,14 @@ class TradingPipeline:
         - Genera una predicción de retorno por modelo
         - Traduce cada predicción a señal BUY/SELL/HOLD (aplicando un umbral en pips)
         - Calcula niveles de entrada / SL / TP y tamaño de posición con base en la sección 'risk'
-        - Guarda todo en outputs/production/production_signals.csv
+        - Guarda señales y, opcionalmente, ejecuta la orden real en MT5
+        - Actualiza el reporte de ciclo de vida de trades cerrados
         """
-        from utils.risk_utils import compute_entry_sl_tp, calculate_position_size
+        from utils.risk_utils import (
+            calculate_position_size_for_risk_amount,
+            compute_entry_sl_tp,
+            estimate_position_risk_amount,
+        )
 
         self.logger.info("\n" + "=" * 60)
         self.logger.info("MODO: PRODUCCIÓN")
@@ -1306,10 +2824,10 @@ class TradingPipeline:
         df_clean = self._clean_data(df_raw)
         df_features = self._generate_features(df_clean)
 
-        target_col = self.config.get("backtest", {}).get("target", "Return_1")
+        target_col = self.config.get("backtest", {}).get("target", "ReturnFwd_1")
 
         # Quitamos filas sin target ni features
-        feature_cols = [c for c in df_features.columns if c != target_col]
+        feature_cols = self._get_model_feature_columns(df_features, target_col)
         df_processed = df_features.dropna(subset=[target_col] + feature_cols)
 
         if df_processed.empty:
@@ -1317,6 +2835,7 @@ class TradingPipeline:
             return
 
         X_all = df_processed[feature_cols]
+        y_all = df_processed[target_col]
 
         # Último valor de ATR (si existe) para gestión de riesgo basada en volatilidad
         atr_col = "ATR_14"
@@ -1328,6 +2847,7 @@ class TradingPipeline:
         # 2) Modelos habilitados en la config
         models_cfg = self.config.get("models", [])
         enabled_models_cfg = [m for m in models_cfg if m.get("enabled", True)]
+        live_cfg = self._get_live_trading_settings()
 
         if not enabled_models_cfg:
             self.logger.error(
@@ -1348,10 +2868,24 @@ class TradingPipeline:
                 "No se pudo determinar un modelo campeón global con _get_best_model_from_config()."
             )
 
+        if live_cfg["execute_best_model_only"] and best_model_config:
+            enabled_models_cfg = [best_model_config]
+            self.logger.info("🎯 Producción configurada para operar únicamente con el modelo campeón.")
+
+        active_release = self._resolve_active_release_assets()
+        active_release_id = active_release.get("release_id")
+        strategy_profile_name = self._get_strategy_profile_name() or active_release.get("strategy_profile") or "default"
+        if active_release_id:
+            self.logger.info(
+                "📦 Release activa de producción%s: %s (activada %s)",
+                f" [{strategy_profile_name}]" if strategy_profile_name else "",
+                active_release_id,
+                active_release.get("activated_at"),
+            )
+
         # 3) Métricas de backtest (summary_best_runs.csv)
         metrics_by_model: dict[str, dict[str, float]] = {}
-        backtest_dir = Path(self.config.get("output", {}).get("dir", "outputs")) / "backtest"
-        summary_path = backtest_dir / "summary_best_runs.csv"
+        summary_path = Path(active_release.get("summary_csv"))
 
         if summary_path.exists():
             try:
@@ -1361,21 +2895,24 @@ class TradingPipeline:
                     "mae",
                     "hit_rate",
                     "accuracy",
+                    "f1_score",
+                    "precision",
+                    "recall",
                     "dm_stat",
                     "dm_pvalue",
                     "sharpe",
                     "sortino",
+                    "calmar",
                     "max_drawdown",
                     "profit_factor",
                     "win_rate",
                     "payoff_ratio",
+                    "consistency_ratio",
+                    "avg_trade_return",
                 ]
-                for model_name in df_best["model"].unique():
-                    sub = df_best[df_best["model"] == model_name]
-                    # Tomamos la fila con menor RMSE
-                    idx_min = sub["rmse"].idxmin()
-                    row = sub.loc[idx_min]
-                    metrics_by_model[str(model_name).upper()] = {
+                for _, row in df_best.iterrows():
+                    model_name = str(row.get("model", "")).upper()
+                    metrics_by_model[model_name] = {
                         col: float(row[col]) if col in row and pd.notna(row[col]) else None
                         for col in metric_cols
                         if col in row
@@ -1395,10 +2932,13 @@ class TradingPipeline:
             "PROPHET": ProphetModel,
             "LSTM": LSTMModel,
             "RANDOMWALK": RandomWalkModel,
+            "MOMENTUM": MomentumModel,
+            "RANDOMFORESTREGRESSOR": RandomForestRegressorModel,
+            "HISTGRADIENTBOOSTING": HistGradientBoostingRegressorModel,
         }
 
         # Directorio donde están los modelos guardados
-        models_dir = Path(self.config.get("output", {}).get("dir", "outputs")) / "models"
+        models_dir = Path(active_release.get("models_dir"))
         models_dir.mkdir(parents=True, exist_ok=True)
 
         # Datos comunes para todas las filas de salida
@@ -1412,19 +2952,26 @@ class TradingPipeline:
         pip_size = float(pip_size_cfg) if pip_size_cfg is not None else 0.0
 
         point = None
+        digits = 5
         contract_size = None
         min_lot = 0.01
         lot_step = 0.01
+        stops_level_points = 0
+        freeze_level_points = 0
+        market_tick = None
 
         try:
             if hasattr(self, "data_loader") and self.data_loader is not None:
-                info = self.data_loader.get_symbol_info()
+                info = self.data_loader.get_symbol_info(symbol)
                 if info:
                     point = float(info.get("point") or 0.0)
+                    digits = int(info.get("digits") or digits)
                     contract_size = float(info.get("trade_contract_size") or 0.0)
                     # volúmenes mínimos / step
                     min_lot = float(info.get("volume_min") or min_lot)
                     lot_step = float(info.get("volume_step") or lot_step)
+                    stops_level_points = int(info.get("trade_stops_level") or 0)
+                    freeze_level_points = int(info.get("trade_freeze_level") or 0)
         except Exception as e:
             self.logger.warning(f"No se pudo obtener info detallada del símbolo desde MT5: {e}")
 
@@ -1442,12 +2989,11 @@ class TradingPipeline:
         # Info de cuenta para tamaño de posición
         balance = None
         try:
-            if hasattr(self, "data_loader") and self.data_loader is not None:
-                mt5_client = getattr(self.data_loader, "mt5_client", None)
-                if mt5_client is not None and hasattr(mt5_client, "mt5"):
-                    acc_info = mt5_client.mt5.account_info()
-                    if acc_info:
-                        balance = float(acc_info.balance)
+            mt5_client = self._ensure_mt5_client()
+            acc_info = mt5_client.get_account_info()
+            if acc_info:
+                balance = float(acc_info.get("balance", 0.0))
+            market_tick = mt5_client.get_symbol_tick(symbol)
         except Exception as e:
             self.logger.warning(f"No se pudo obtener balance desde MT5: {e}")
 
@@ -1465,7 +3011,44 @@ class TradingPipeline:
         if balance is None:
             balance = 0.0
 
-        risk_per_trade_pct = float(risk_cfg_dict.get("risk_per_trade_pct", 0.01))
+        risk_budget_cfg = self._get_risk_budget_settings()
+        risk_per_trade_pct = float(risk_budget_cfg["risk_per_trade_pct"])
+        max_total_open_risk_pct = float(risk_budget_cfg["max_total_open_risk_pct"])
+        total_risk_budget = max(0.0, balance * max_total_open_risk_pct)
+        per_trade_risk_budget = max(0.0, balance * risk_per_trade_pct)
+
+        open_risk_snapshot = {
+            "open_risk_amount": 0.0,
+            "open_positions_count": 0,
+            "positions_without_sl": 0,
+        }
+        if "mt5_client" in locals():
+            try:
+                open_risk_snapshot = self._estimate_open_positions_risk(
+                    mt5_client=mt5_client,
+                    open_positions=mt5_client.get_all_positions(),
+                )
+            except Exception as e:
+                self.logger.warning(f"No se pudo estimar el riesgo abierto actual: {e}")
+
+        open_risk_amount = float(open_risk_snapshot.get("open_risk_amount", 0.0))
+        positions_without_sl = int(open_risk_snapshot.get("positions_without_sl", 0))
+
+        if positions_without_sl > 0:
+            self.logger.warning(
+                "Hay %s posicion(es) abierta(s) sin SL valido. Riesgo abierto estimado=%.2f",
+                positions_without_sl,
+                open_risk_amount,
+            )
+
+        if total_risk_budget > 0:
+            self.logger.info(
+                "Presupuesto de riesgo: total=%.2f | abierto=%.2f | restante=%.2f | por_trade=%.2f",
+                total_risk_budget,
+                open_risk_amount,
+                max(total_risk_budget - open_risk_amount, 0.0),
+                per_trade_risk_budget,
+            )
 
         # --- Parámetros de trading (umbral de pips para señal) ---
         trading_cfg = self.config.get("trading", {}) or {}
@@ -1477,6 +3060,7 @@ class TradingPipeline:
         )
 
         rows = []
+        planned_additional_risk_amount = 0.0
 
         self.logger.info("🔎 Generando señales de producción para TODOS los modelos habilitados...\n")
 
@@ -1526,7 +3110,10 @@ class TradingPipeline:
 
             # Predecir
             try:
-                prediction = model_instance.predict_loaded(X_all)
+                if hasattr(model_instance, "predict_loaded_with_context"):
+                    prediction = model_instance.predict_loaded_with_context(X_all, y_all)
+                else:
+                    prediction = model_instance.predict_loaded(X_all)
             except Exception as e:
                 self.logger.error(
                     f"  ✗ Error al predecir con el modelo cargado {model_name}: {e}"
@@ -1552,47 +3139,133 @@ class TradingPipeline:
                 delta_price = float("nan")
                 pips = float("nan")
 
-            # Señal inicial basada solo en pips
-            if np.isnan(pips) or abs(pips) < min_pips_signal:
-                signal = "HOLD"
-            else:
-                signal = "BUY" if pips > 0 else "SELL"
+            # Métricas históricas del modelo para score de confianza
+            m_metrics = metrics_by_model.get(model_name_upper, {})
 
-            # --- Gestión de riesgo: entry / SL / TP / tamaño ---
+            enable_confidence_filter = bool(trading_cfg.get("enable_confidence_filter", False))
+            min_confidence = float(trading_cfg.get("min_confidence", 0.60))
+
+            signal_info = build_signal_from_prediction(
+                pred_return=pred_return,
+                pip_size=pip_size,
+                min_pips_signal=min_pips_signal,
+                model_metrics=m_metrics if 'm_metrics' in locals() else {},
+                min_confidence=min_confidence if enable_confidence_filter else 0.0,
+                probability=None,
+            )
+            signal = str(signal_info["signal"])
+            confidence = float(signal_info["confidence"])
+            confirmation = self._evaluate_signal_confirmation(
+                signal=signal,
+                feature_row=last_row,
+            )
+            if signal in {"BUY", "SELL"} and not confirmation.get("passed", True):
+                self.logger.info(
+                    "  -> Señal %s bloqueada por confirmación opcional: %s",
+                    signal,
+                    confirmation.get("reason"),
+                )
+                signal = "HOLD"
+
+            # --- Gestión de riesgo: niveles planificados y niveles reales de mercado ---
             entry_price = float("nan")
             sl_price = float("nan")
             tp_price = float("nan")
             sl_pips = float("nan")
             tp_pips = float("nan")
+            live_entry_price = float("nan")
+            live_sl_price = float("nan")
+            live_tp_price = float("nan")
+            live_sl_pips = float("nan")
+            live_tp_pips = float("nan")
             volume_lots = 0.0
             risk_amount = 0.0
+            allocated_risk_budget = 0.0
+            risk_per_pip_per_lot = 0.0
+            risk_per_lot_at_stop = 0.0
+            projected_total_open_risk_after_trade = max(open_risk_amount + planned_additional_risk_amount, 0.0)
+            remaining_risk_budget_before_trade = max(
+                total_risk_budget - open_risk_amount - planned_additional_risk_amount,
+                0.0,
+            )
+
+            market_reference_price = float("nan")
+            if isinstance(market_tick, dict):
+                if signal == "BUY":
+                    market_reference_price = float(market_tick.get("ask") or np.nan)
+                elif signal == "SELL":
+                    market_reference_price = float(market_tick.get("bid") or np.nan)
 
             if signal in ("BUY", "SELL") and not np.isnan(price_now):
-                levels = compute_entry_sl_tp(
+                planned_levels = compute_entry_sl_tp(
                     side=signal,
                     close_price=price_now,
                     atr_value=atr_value,
                     pip_size=pip_size,
                     risk_cfg_dict=risk_cfg_dict,
                 )
-                entry_price = levels["entry_price"]
-                sl_price = levels["sl_price"]
-                tp_price = levels["tp_price"]
-                sl_pips = levels["sl_pips"]
-                tp_pips = levels["tp_pips"]
+                entry_price = round(float(planned_levels["entry_price"]), digits)
+                sl_price = round(float(planned_levels["sl_price"]), digits)
+                tp_price = round(float(planned_levels["tp_price"]), digits)
+                sl_pips = planned_levels["sl_pips"]
+                tp_pips = planned_levels["tp_pips"]
 
-                # Cálculo de tamaño de posición en lotes
-                volume_lots = calculate_position_size(
-                    balance=balance,
-                    entry_price=entry_price,
-                    sl_price=sl_price,
+                live_risk_cfg = dict(risk_cfg_dict)
+                live_risk_cfg["entry_mode"] = "close"
+                live_close_price = market_reference_price if not np.isnan(market_reference_price) else price_now
+                live_levels = compute_entry_sl_tp(
+                    side=signal,
+                    close_price=live_close_price,
+                    atr_value=atr_value,
+                    pip_size=pip_size,
+                    risk_cfg_dict=live_risk_cfg,
+                )
+                live_entry_price = round(float(live_levels["entry_price"]), digits)
+                live_sl_price = round(float(live_levels["sl_price"]), digits)
+                live_tp_price = round(float(live_levels["tp_price"]), digits)
+                live_sl_pips = live_levels["sl_pips"]
+                live_tp_pips = live_levels["tp_pips"]
+
+                # Tamaño de posición coherente con la ejecución real de mercado.
+                block_for_unprotected_positions = (
+                    risk_budget_cfg["allow_multiple_positions"]
+                    and risk_budget_cfg["block_new_entries_without_sl"]
+                    and positions_without_sl > 0
+                )
+                available_risk_budget = remaining_risk_budget_before_trade
+                if block_for_unprotected_positions:
+                    available_risk_budget = 0.0
+
+                allocated_risk_budget = min(per_trade_risk_budget, available_risk_budget)
+                risk_per_pip_per_lot = max(contract_size * pip_size, 0.0)
+                risk_per_lot_at_stop = estimate_position_risk_amount(
+                    entry_price=live_entry_price,
+                    sl_price=live_sl_price,
                     point=point,
                     contract_size=contract_size,
-                    risk_per_trade_pct=risk_per_trade_pct,
+                    volume_lots=1.0,
+                )
+                volume_lots = calculate_position_size_for_risk_amount(
+                    entry_price=live_entry_price,
+                    sl_price=live_sl_price,
+                    point=point,
+                    contract_size=contract_size,
+                    risk_amount=allocated_risk_budget,
                     min_lot=min_lot,
                     lot_step=lot_step,
                 )
-                risk_amount = balance * risk_per_trade_pct
+                if volume_lots > 0:
+                    risk_amount = estimate_position_risk_amount(
+                        entry_price=live_entry_price,
+                        sl_price=live_sl_price,
+                        point=point,
+                        contract_size=contract_size,
+                        volume_lots=volume_lots,
+                    )
+                    planned_additional_risk_amount += risk_amount
+                    projected_total_open_risk_after_trade = open_risk_amount + planned_additional_risk_amount
+                else:
+                    projected_total_open_risk_after_trade = open_risk_amount + planned_additional_risk_amount
 
             # Métricas de backtest (si existen)
             m_metrics = metrics_by_model.get(model_name_upper, {})
@@ -1613,19 +3286,40 @@ class TradingPipeline:
 
             self.logger.info(
                 f"  📈 Modelo {model_name} -> retorno={pred_return:.6f}, "
-                f"pips={pips:.2f}, signal={signal}, "
-                f"entry={entry_price}, SL={sl_price}, TP={tp_price}, "
-                f"lots={volume_lots:.2f}, balance={balance}, risk={risk_amount:.2f}"
+                f"pips={pips:.2f}, signal={signal}, confidence={confidence:.3f}, "
+                f"confirm={confirmation.get('reason')}, "
+                f"entry_plan={entry_price}, SL_plan={sl_price}, TP_plan={tp_price}, "
+                f"entry_live={live_entry_price}, SL_live={live_sl_price}, TP_live={live_tp_price}, "
+                f"lots={volume_lots:.2f}, balance={balance}, risk={risk_amount:.2f}, "
+                f"sl_pips_live={live_sl_pips:.2f}, usd_per_pip_lot={risk_per_pip_per_lot:.2f}, "
+                f"risk_per_lot_stop={risk_per_lot_at_stop:.2f}, open_risk={open_risk_amount:.2f}, "
+                f"remaining_budget={remaining_risk_budget_before_trade:.2f}, "
+                f"projected_open_risk={projected_total_open_risk_after_trade:.2f}"
             )
 
             row = {
                 "timestamp": df_processed.index[-1],
+                "release_id": active_release_id,
+                "strategy_profile": strategy_profile_name,
+                "magic_number": live_cfg["magic_number"],
+                "order_comment_prefix": live_cfg["order_comment_prefix"],
                 "symbol": symbol,
                 "timeframe": self.config.get("data", {}).get("timeframe", "UNKNOWN"),
                 "model": model_name,
                 "pred_return": pred_return,
                 "signal": signal,
+                "confidence": confidence,
+                "signal_confirmation_enabled": bool(confirmation.get("enabled", False)),
+                "signal_confirmation_passed": bool(confirmation.get("passed", True)),
+                "signal_confirmation_reason": confirmation.get("reason"),
+                "momentum_feature": confirmation.get("momentum_column"),
+                "momentum_value": confirmation.get("momentum_value"),
+                "volume_feature": confirmation.get("volume_column"),
+                "volume_value": confirmation.get("volume_value"),
+                "regime_feature": confirmation.get("regime_column"),
+                "regime_value": confirmation.get("regime_value"),
                 "entry_price": entry_price,
+                "planned_entry_price": entry_price,
                 "price_now": price_now,
                 "price_target": price_target,
                 "delta_price": delta_price,
@@ -1635,58 +3329,82 @@ class TradingPipeline:
                 "tp_price": tp_price,
                 "sl_pips": sl_pips,
                 "tp_pips": tp_pips,
+                "market_reference_price": market_reference_price,
+                "live_entry_price": live_entry_price,
+                "live_sl_price": live_sl_price,
+                "live_tp_price": live_tp_price,
+                "live_sl_pips": live_sl_pips,
+                "live_tp_pips": live_tp_pips,
+                "symbol_digits": digits,
+                "stops_level_points": stops_level_points,
+                "freeze_level_points": freeze_level_points,
                 "volume_lots": volume_lots,
                 "account_balance": balance,
                 "risk_per_trade_pct": risk_per_trade_pct,
                 "risk_amount": risk_amount,
+                "allocated_risk_budget": allocated_risk_budget,
+                "risk_per_pip_per_lot": risk_per_pip_per_lot,
+                "risk_per_lot_at_stop": risk_per_lot_at_stop,
+                "max_total_open_risk_pct": max_total_open_risk_pct,
+                "open_risk_amount": open_risk_amount,
+                "remaining_risk_budget_before_trade": remaining_risk_budget_before_trade,
+                "projected_total_open_risk_after_trade": projected_total_open_risk_after_trade,
+                "positions_without_sl_open": positions_without_sl,
                 "is_best_model": is_best,
                 # Métricas de backtest
                 "rmse_backtest": rmse,
                 "mae_backtest": mae,
                 "hit_rate_backtest": hit_rate,
                 "accuracy_backtest": accuracy,
+                "f1_score_backtest": m_metrics.get("f1_score"),
+                "precision_backtest": m_metrics.get("precision"),
+                "recall_backtest": m_metrics.get("recall"),
                 "dm_stat_backtest": dm_stat,
                 "dm_pvalue_backtest": dm_pvalue,
                 "sharpe_backtest": sharpe,
                 "sortino_backtest": sortino,
+                "calmar_backtest": m_metrics.get("calmar"),
                 "max_drawdown_backtest": max_dd,
                 "profit_factor_backtest": profit_factor,
                 "win_rate_backtest": win_rate,
                 "payoff_ratio_backtest": payoff_ratio,
+                "consistency_ratio_backtest": m_metrics.get("consistency_ratio"),
+                "avg_trade_return_backtest": m_metrics.get("avg_trade_return"),
             }
 
             rows.append(row)
 
         if not rows:
             self.logger.error("No se generó ninguna señal de producción (todas fallaron).")
+            self._sync_live_trade_report()
             return
 
         df_rows = pd.DataFrame(rows)
 
-        # 7) Guardar las señales en CSV
-        output_dir = Path(self.config.get("output", {}).get("dir", "outputs")) / "production"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        csv_path = output_dir / "production_signals.csv"
+        # 7) Guardar señales
+        output_paths = self._get_production_output_paths()
+        self._append_rows_to_csv(output_paths["signals"], df_rows)
+        self.logger.info(f"\n💾 Señales de producción guardadas en: {output_paths['signals']}")
 
-        if csv_path.exists():
-            existing = pd.read_csv(csv_path)
-            # Construir el conjunto completo de columnas (viejas + nuevas)
-            all_cols = list(existing.columns)
-            for c in df_rows.columns:
-                if c not in all_cols:
-                    all_cols.append(c)
-            # Reindexar ambos dataframes al mismo orden de columnas
-            existing = existing.reindex(columns=all_cols)
-            df_rows = df_rows.reindex(columns=all_cols)
-
-            # Unir y reescribir el archivo completo (con header actualizado)
-            combined = pd.concat([existing, df_rows], ignore_index=True)
-            combined.to_csv(csv_path, index=False)
-        else:
-            df_rows.to_csv(csv_path, index=False)
-
-        self.logger.info(f"\n💾 Señales de producción guardadas en: {csv_path}")
+        # 8) Ejecución real opcional + reconciliación del reporte de trades
+        self._execute_live_orders(df_rows)
+        self._sync_live_trade_report()
         self.logger.info("✅ MODO PRODUCCIÓN COMPLETADO\n")
+
+    def _run_sync_trades_mode(self) -> None:
+        """Sincroniza el reporte local con el estado real de posiciones/deals en MT5."""
+        self.logger.info("\n" + "=" * 60)
+        self.logger.info("MODO: SYNC TRADES")
+        self.logger.info("=" * 60 + "\n")
+
+        self._ensure_mt5_client()
+        lifecycle = self._sync_live_trade_report()
+        n_closed = 0
+        if lifecycle is not None and not lifecycle.empty and "status" in lifecycle.columns:
+            n_closed = int((lifecycle["status"].astype(str).str.upper() == "CLOSED").sum())
+
+        self.logger.info(f"🔄 Sincronización completada. Trades cerrados registrados: {n_closed}")
+        self.logger.info("✅ MODO SYNC TRADES COMPLETADO\n")
 
     def _get_best_model_from_config(self) -> dict | None:
         """
@@ -1738,14 +3456,30 @@ class TradingPipeline:
         
         data_config = self.config.get("data", {})
         mt5_config = self.config.get("mt5", {})
+        runtime_mode = self._active_mode in {"production", "sync_trades"}
+        use_cache = data_config.get("use_cache", True)
+        cache_expiry_hours = data_config.get("cache_expiry_hours", 24)
+
+        if runtime_mode:
+            runtime_use_cache = data_config.get("runtime_use_cache")
+            runtime_cache_expiry_minutes = data_config.get("runtime_cache_expiry_minutes")
+            use_cache = bool(runtime_use_cache) if runtime_use_cache is not None else False
+            if runtime_cache_expiry_minutes is not None:
+                try:
+                    cache_expiry_hours = float(runtime_cache_expiry_minutes) / 60.0
+                except (TypeError, ValueError):
+                    cache_expiry_hours = data_config.get("cache_expiry_hours", 24)
+            self.logger.info(
+                f"  -> Runtime data policy: use_cache={use_cache}, cache_expiry_hours={cache_expiry_hours}"
+            )
         
         self.data_loader = DataLoader(mt5_config=mt5_config)
         df = self.data_loader.load_data(
             symbol=data_config.get("symbol", "EURUSD"),
             timeframe=data_config.get("timeframe", "D1"),
             n_bars=data_config.get("n_bars", 1000),
-            use_cache=data_config.get("use_cache", True),
-            cache_expiry_hours=data_config.get("cache_expiry_hours", 24)
+            use_cache=use_cache,
+            cache_expiry_hours=cache_expiry_hours
         )
         
         # Mensajes para indicar de dónde vienen los parámetros
@@ -1785,7 +3519,8 @@ class TradingPipeline:
 
         # 2. Generar indicadores técnicos
         if features_config.get("technical_indicators", {}).get("enabled", False):
-            df_features = FeatureEngineer.add_technical_indicators(df_features)
+            indicators = features_config.get("technical_indicators", {}).get("indicators")
+            df_features = FeatureEngineer.add_technical_indicators(df_features, indicators=indicators)
             self.logger.info("  -> Indicadores técnicos agregados.")
 
         # 3. Generar features rezagados (lags)
@@ -1795,6 +3530,24 @@ class TradingPipeline:
                 if col in df_features.columns:
                     df_features = FeatureEngineer.add_lag_features(df_features, col=col, lags=lag_config.get("lags", []))
                     self.logger.info(f"  -> Lags agregados para la columna: '{col}'")
+
+        # 4. Aprendizaje no supervisado (regímenes de mercado)
+        unsup_cfg = self.config.get("unsupervised", {}) or {}
+        if unsup_cfg.get("enabled", False):
+            try:
+                method = str(unsup_cfg.get("method", "kmeans")).lower()
+                if method == "kmeans":
+                    n_clusters = int(unsup_cfg.get("n_clusters", 3))
+                    self.regime_clusterer = MarketRegimeClusterer(n_clusters=n_clusters)
+                    regime_result = self.regime_clusterer.fit_transform(df_features)
+                    df_features = regime_result.features
+                    self.logger.info(
+                        f"  -> Regímenes de mercado agregados con KMeans (n_clusters={n_clusters})."
+                    )
+                else:
+                    self.logger.warning(f"  -> Método no supervisado no soportado: {method}")
+            except Exception as e:
+                self.logger.warning(f"  -> No se pudieron agregar regímenes de mercado: {e}")
 
         # --- NUEVO: Log para inspeccionar NaNs después de la generación ---
         nan_counts = df_features.isnull().sum()
@@ -2026,7 +3779,7 @@ def _plot_accuracy_curve(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Pipeline de Trading Algorítmico.")
     parser.add_argument("--mode", type=str, default="eda", 
-                        choices=["eda", "train", "backtest","production", "test", "clear_cache"],
+                        choices=["eda", "train", "backtest","production", "test", "sync_trades", "clear_cache"],
                         help="Modo de ejecución del pipeline.")
     parser.add_argument("--config", type=str, default="config/config.yaml",
                         help="Ruta al archivo de configuración YAML.")

@@ -9,6 +9,8 @@ mt5:
   server: "RoboForex-Pro"
   path: "C:\\Program Files\\RoboForex - MetaTrader 5\\terminal64.exe"
 
+# --- VALIDACIÓN / HOLDOUT ---
+# (lo estás usando como "sin holdout" para backtest rolling)
 validation:
   mode: last_n
   n: 0
@@ -16,36 +18,32 @@ validation:
 # --- DATOS ---
 data:
   symbol: "EURUSD"
-  #.US500Cash
-  timeframe: "D1"  # D1, H1, H4, M15, etc.
+  timeframe: "H1"
   n_bars: 1500
-  use_cache: false
+  use_cache: true              # ✅ acelera iteraciones (recomendado)
   cache_expiry_hours: 24
-  #pip_size: 1.0
   pip_size: 0.0001
-  
-  # Símbolos adicionales (para análisis multi-activo)
+
   additional_symbols:
     - "GBPUSD"
-    - "US500"  # S&P 500
+    - "US500"
 
 # --- LIMPIEZA DE DATOS ---
 data_cleaning:
-  handle_missing: "ffill"        # ffill, bfill, interpolate, drop
-  outlier_method: "iqr"          # iqr, zscore
+  handle_missing: "ffill"
+  outlier_method: "iqr"
   outlier_threshold: 3.0
-  handle_outliers: "cap"         # cap, remove, interpolate
+  handle_outliers: "cap"
   remove_duplicates: true
   validate_ohlc: true
   min_valid_ratio: 0.90
 
-# --- ANÁLISIS EXPLORATORIO (EDA) ---
+# --- EDA ---
+# Para backtests largos, mejor apagarlo (puedes prenderlo en modo eda aparte)
 eda:
-  enabled: true
+  enabled: false
   output_dir: "outputs/eda"
   price_col: "Close"
-  
-  # Gráficos a generar
   plots:
     price_series: true
     returns_distribution: true
@@ -53,20 +51,16 @@ eda:
     acf_pacf: true
     rolling_volatility: true
     seasonal_decomposition: true
-  
-  # Parámetros de análisis
   acf_lags: 40
   rolling_windows: [20, 60, 120]
-  seasonal_period: 7  # Para descomposición (7 = semanal)
+  seasonal_period: 7
 
 # --- FEATURE ENGINEERING ---
 features:
-  # Retornos
   returns:
     enabled: true
-    periods: [1, 5, 10]  # Calcular retornos a múltiples horizontes
-  
-  # Indicadores técnicos
+    periods: [1, 5, 10]
+
   technical_indicators:
     enabled: true
     indicators:
@@ -78,8 +72,7 @@ features:
       - macd
       - bollinger_bands
       - atr_14
-  
-  # Features rezagados
+
   lag_features:
     enabled: true
     columns: ["Close", "Volume"]
@@ -87,64 +80,64 @@ features:
 
 # --- MODELOS ---
 models:
-  - name: RandomWalk
+  # ✅ Momentum (para ReturnFwd_1). IMPORTANTE:
+  # Usa el name que tu pipeline reconozca. Si tu main_pipeline reconoce "Momentum", déjalo así.
+  - name: Momentum
     enabled: true
-    # Modelo base sin parámetros
+    param_grid:
+      lookback: [1, 3, 5, 10]
 
+  # ✅ ARIMA más robusto, pero sin explotar combinaciones
   - name: ARIMA
     enabled: true
-    # Rejilla de parámetros para Grid Search.
-    # El pipeline probará todas las combinaciones posibles.
     param_grid:
-      p: [1, 2, 5]
-      d: [0]
+      p: [1, 2, 3, 4]
+      d: [0, 1]
       q: [0, 1, 2]
-      # Para ARIMA estacional, se podría añadir:
-      # seasonal_order: [[1,1,1,12], [0,1,1,12]]
-    
+
+  # ✅ Prophet: reducimos un poco el grid, pero sigue robusto
   - name: PROPHET
-    enabled: false
+    enabled: true
     param_grid:
-      changepoint_prior_scale: [0.01, 0.05, 0.1]
-      seasonality_prior_scale: [0.1, 1.0, 10.0]
+      changepoint_prior_scale: [0.01, 0.05]
+      seasonality_prior_scale: [1.0, 10.0]
       seasonality_mode: ["additive", "multiplicative"]
       yearly_seasonality: [false]
       weekly_seasonality: [true]
       daily_seasonality: [false]
-      use_lagged_regressors: [true] # <-- AÑADIR ESTA LÍNEA
-    
+      use_lagged_regressors: [true]
+
+  # ✅ LSTM: más robusto (8 combos) pero sin volverse infinito
   - name: LSTM
-    enabled: false
+    enabled: true
     param_grid:
-      # --- Grid Search Reducido (~2 horas) ---
-      window: [20, 40]                # Probar ventana corta y larga
-      learning_rate: [0.001]          # Tasa de aprendizaje fija por ahora
-      
-      # --- Arquitectura del Modelo ---
-      architecture: ["stacked_lstm", "bidirectional_lstm"] # Probar diferentes arquitecturas
-      n_layers: [1, 2]                # Probar con 1 o 2 capas LSTM
-      units: [32, 96]                 # Probar con pocas y muchas neuronas
-      dropout: [0.2]                  # Tasa de dropout fija
-
-      # --- Parámetros de Entrenamiento ---
-      epochs: [50]                    # Épocas fijas
-      batch_size: [32]                # Tamaño de lote fijo
-      early_stopping_patience: [10]   # Implementar Early Stopping para evitar sobreajuste y ahorrar tiempo
-
+      window: [70]
+      learning_rate: [0.001]
+      architecture: ["stacked_lstm","bidirectional_lstm"]
+      n_layers: [1]
+      units: [32]
+      dropout: [0.1, 0.2]
+      epochs: [50]
+      batch_size: [64]
+      early_stopping_patience: [5]
 
 # --- BACKTESTING ---
 backtest:
   enabled: true
-  initial_train: 700          # Datos para entrenamiento inicial
-  step: 5                    # Paso de rolling window (aumentado)
-  horizon: 1                  # Horizonte de predicción
-  target: "Return_1"          # Columna objetivo exacta (Return_1, Close, etc.)
-  # --- Umbral mínimo para considerar una señal en backtest ---
-  pip_size: 0.0001          # típico EURUSD
-  threshold_pips: 10.0
-  plot_scale: "price"    # mínimo de pips para que cuente como trade en métricas
 
-  # Métricas a calcular (y a guardar en los CSV)
+  # ✅ Más robusto: más historia por entrenamiento
+  initial_train: 900
+
+  # ✅ Reduce MUCHÍSIMO el tiempo vs step=5 (menos ventanas)
+  step: 15
+
+  horizon: 1
+  target: "ReturnFwd_1"
+
+  pip_size: 0.0001
+  threshold_pips: 10
+  plot_scale: "price"
+
   metrics:
     - mae
     - rmse
@@ -158,7 +151,7 @@ backtest:
     - win_rate
     - payoff_ratio
     - n_test_points
-    - n_trades    
+    - n_trades
 
 # --- OUTPUT ---
 output:
@@ -166,67 +159,46 @@ output:
   save_predictions: true
   save_models: true
   save_plots: true
-  
-  # Formatos de exportación
   formats:
     - csv
     - excel
     - pdf
 
 trading:
-  # --- NUEVO: umbral mínimo de señal en producción ---
-  min_pips_signal: 10.0      # ej: abrir trade solo si la predicción supera 20 pips
+  min_pips_signal: 10.0
 
-# --- Gestión del riesgo ---
 risk:
-  # % de la cuenta a arriesgar por trade (0.01 = 1%)
   risk_per_trade_pct: 0.01
-
-  # Opcional: si no lees el balance desde MT5, puedes fijarlo aquí
-  # account_balance: 10000
-
-  # Cómo calcular el Stop Loss:
-  # - "atr"  → SL dinámico según volatilidad (ATR_14)
-  # - "fixed" → SL fijo en pips
   sl_mode: "atr"
-
-  # Si sl_mode = "fixed"
   fixed_sl_pips: 30.0
-
-  # Si sl_mode = "atr": SL = ATR * atr_sl_multiplier, acotado por min/max
   atr_sl_multiplier: 1.5
   atr_sl_min_pips: 10.0
   atr_sl_max_pips: 40.0
-
-  # Relación TP/SL (2.0 = TP al doble de la distancia del SL)
   tp_rr_ratio: 2.0
-
-  # Cómo defines el precio de entrada:
-  # - "close"        → entrada al precio de cierre actual
-  # - "atr_pullback" → espera un retroceso de ATR * atr_entry_mult
   entry_mode: "atr_pullback"
   atr_entry_mult: 0.5
 
 # --- LOGGING ---
 logging:
   enabled: true
-  level: "INFO"               # DEBUG, INFO, WARNING, ERROR
+  level: "INFO"
   to_file: true
   file_path: "logs/trading.log"
   to_console: true
 
 # --- EJECUCIÓN ---
 execution:
-  mode: "backtest"            # eda, train, backtest, production
-  parallel: false             # Ejecutar modelos en paralelo
-  n_jobs: -1                  # -1 para usar todos los cores
+  mode: "backtest"
+  parallel: false
+  n_jobs: -1
 
 # --- SELECCIÓN DEL MEJOR MODELO ---
 model_selection:
-  # 1) Métrica principal para ranking entre hiperparámetros
   primary_metric: "hit_rate"
-  primary_greater_is_better: true   # mayor hit_rate es mejor
-
-  # 2) Métrica secundaria (para desempates)
+  primary_greater_is_better: true
   secondary_metric: "rmse"
-  secondary_greater_is_better: false  # menor rmse es mejor
+  secondary_greater_is_better: false
+
+  # ✅ evita el “ARIMA 100%” con 2 trades
+  min_trades: 20
+  min_test_points: 50

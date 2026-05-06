@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Script para generar un reporte ejecutivo en Word
 a partir de los resultados del backtest.
@@ -5,7 +7,8 @@ a partir de los resultados del backtest.
 Usa:
     - outputs/backtest/summary_best_runs.(csv|xlsx)
     - outputs/backtest/report_ARIMA.csv, report_LSTM.csv, etc. (opcional)
-    - outputs/predictions/production_signals.(csv|xlsx) (opcional)
+    - outputs/production/production_signals.csv (primario)
+    - outputs/predictions/production_signals.(csv|xlsx) (fallback legado)
 
 Salida:
     outputs/reportes/reporte_ejecutivo_modelos.docx
@@ -15,9 +18,6 @@ import os
 from pathlib import Path
 
 import pandas as pd
-from docx import Document
-from docx.shared import Pt
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 
 # ==========================
@@ -29,6 +29,7 @@ ASSET_UNIVERSE = "EUR/USD y SPY"   # cámbialo si solo usas EUR/USD, etc.
 
 BASE_DIR = Path(__file__).parent
 BACKTEST_DIR = BASE_DIR / "outputs" / "backtest"
+PRODUCTION_DIR = BASE_DIR / "outputs" / "production"
 PREDICTIONS_DIR = BASE_DIR / "outputs" / "predictions"
 REPORTS_DIR = BASE_DIR / "outputs" / "reportes"
 
@@ -45,6 +46,7 @@ MODEL_REPORTS = {
 }
 
 PRODUCTION_SIGNALS_PATHS = [
+    PRODUCTION_DIR / "production_signals.csv",
     PREDICTIONS_DIR / "production_signals.csv",
     PREDICTIONS_DIR / "production_signals.xlsx",
 ]
@@ -79,19 +81,23 @@ def format_float(value, decimals=4):
         return "-"
 
 
-def add_title(document: Document, text: str):
+def add_title(document, text: str):
     """Añade título principal con estilo grande."""
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
     title = document.add_heading(text, level=1)
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
 
-def add_heading(document: Document, text: str, level: int = 2):
+def add_heading(document, text: str, level: int = 2):
     """Añade encabezado de sección."""
     document.add_heading(text, level=level)
 
 
-def add_paragraph(document: Document, text: str, bold=False, italic=False):
+def add_paragraph(document, text: str, bold=False, italic=False):
     """Añade un párrafo con formato sencillo."""
+    from docx.shared import Pt
+
     p = document.add_paragraph()
     run = p.add_run(text)
     run.bold = bold
@@ -100,7 +106,7 @@ def add_paragraph(document: Document, text: str, bold=False, italic=False):
     return p
 
 
-def create_summary_table(document: Document, df_summary: pd.DataFrame):
+def create_summary_table(document, df_summary: pd.DataFrame):
     """
     Crea una tabla en Word con resumen por modelo (RMSE, MAE, Hit Rate).
     Toma los datos de summary_best_runs.
@@ -134,11 +140,30 @@ def create_summary_table(document: Document, df_summary: pd.DataFrame):
     return table
 
 
+def get_champion_row(df_summary: pd.DataFrame):
+    """Devuelve la fila del campeón usando is_best cuando exista."""
+    if "is_best" in df_summary.columns:
+        raw = df_summary["is_best"]
+        if pd.api.types.is_bool_dtype(raw):
+            mask = raw.fillna(False)
+        else:
+            mask = raw.fillna(False).astype(str).str.strip().str.lower().isin(["true", "1", "yes", "y"])
+        if mask.any():
+            return df_summary.loc[mask].iloc[0]
+
+    if "rmse" in df_summary.columns:
+        return df_summary.loc[df_summary["rmse"].idxmin()]
+
+    return df_summary.iloc[0]
+
+
 # ==========================
 # GENERACIÓN DEL REPORTE
 # ==========================
 
 def generate_executive_report():
+    from docx import Document
+
     # Crear directorio de salida
     os.makedirs(REPORTS_DIR, exist_ok=True)
 
@@ -207,15 +232,14 @@ def generate_executive_report():
     # Tabla de resumen
     create_summary_table(doc, df_summary)
 
-    # Identificar el mejor modelo global por RMSE
-    if "rmse" in df_summary.columns:
-        best_row = df_summary.loc[df_summary["rmse"].idxmin()]
-        best_model = best_row["model"]
+    champion_row = get_champion_row(df_summary)
+    if champion_row is not None:
+        champion_model = champion_row["model"]
         txt_best = (
-            f"El modelo con mejor desempeño según RMSE es {best_model}, "
-            f"con RMSE={format_float(best_row.get('rmse'))}, "
-            f"MAE={format_float(best_row.get('mae'))} y "
-            f"Hit Rate={format_float(best_row.get('hit_rate'))} %."
+            f"El modelo campeón del proceso de backtesting es {champion_model}, "
+            f"con Sharpe={format_float(champion_row.get('sharpe'))}, "
+            f"Profit Factor={format_float(champion_row.get('profit_factor'))} y "
+            f"Hit Rate={format_float(champion_row.get('hit_rate'))} %."
         )
         add_paragraph(doc, txt_best)
 
@@ -253,7 +277,8 @@ def generate_executive_report():
         "una mejora marginal sobre el benchmark aleatorio en términos de "
         "error de predicción y acierto direccional. Sin embargo, dichas "
         "ganancias deben ponderarse frente a los costos de transacción y "
-        "la complejidad operativa del modelo."
+        "la complejidad operativa del modelo. La recomendación operativa debe "
+        "seguir el campeón determinado por el proceso de selección del backtest."
     )
 
     # 8. Limitaciones y trabajo futuro

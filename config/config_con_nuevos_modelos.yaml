@@ -1,0 +1,218 @@
+# ==========================================================
+# CONFIG COMPLETA - NUEVOS MODELOS + RÉGIMEN + CONFIANZA
+# Requiere:
+# 1) Reemplazar main_pipeline.py por main_pipeline_completo.py
+# 2) Reemplazar utils/metrics.py por utils/metrics_v2.py
+# 3) Copiar models/tree_models.py
+# 4) Copiar models/regime_model.py
+# 5) Copiar utils/decision_utils.py
+# ==========================================================
+
+mt5:
+  login: 68238343
+  password: "Colombia123*"
+  server: "RoboForex-Pro"
+  path: "C:\\Program Files\\RoboForex - MetaTrader 5\\terminal64.exe"
+
+validation:
+  mode: last_n
+  n: 700
+  test_size: 0.2
+
+data:
+  symbol: "EURUSD"
+  timeframe: "H1"
+  n_bars: 2000
+  use_cache: true
+  cache_expiry_hours: 24
+  pip_size: 0.0001
+  additional_symbols:
+    - "GBPUSD"
+    - "US500"
+
+data_cleaning:
+  handle_missing: "ffill"
+  outlier_method: "iqr"
+  outlier_threshold: 3.0
+  handle_outliers: "cap"
+  remove_duplicates: true
+  validate_ohlc: true
+  min_valid_ratio: 0.90
+
+eda:
+  enabled: false
+  output_dir: "outputs/eda"
+  price_col: "Close"
+  plots:
+    price_series: true
+    returns_distribution: true
+    qq_plot: true
+    acf_pacf: true
+    rolling_volatility: true
+    seasonal_decomposition: true
+  acf_lags: 40
+  rolling_windows: [20, 60, 120]
+  seasonal_period: 7
+
+features:
+  returns:
+    enabled: true
+    periods: [1, 5, 10]
+  technical_indicators:
+    enabled: true
+    indicators:
+      - sma_20
+      - sma_50
+      - ema_12
+      - ema_26
+      - rsi_14
+      - macd
+      - bollinger_bands
+      - atr_14
+  lag_features:
+    enabled: true
+    columns: ["Close", "Volume"]
+    lags: [1, 2, 3, 5, 10]
+
+unsupervised:
+  enabled: true
+  method: "kmeans"
+  n_clusters: 3
+  add_one_hot: true
+
+models:
+  - name: Momentum
+    enabled: true
+    param_grid:
+      lookback: [1, 3, 5]
+
+  - name: ARIMA
+    enabled: true
+    param_grid:
+      p: [1, 2, 3]
+      d: [0, 1]
+      q: [0, 1]
+
+  - name: PROPHET
+    enabled: true
+    param_grid:
+      changepoint_prior_scale: [0.01, 0.05]
+      seasonality_prior_scale: [1.0, 10.0]
+      seasonality_mode: ["additive", "multiplicative"]
+      yearly_seasonality: [false]
+      weekly_seasonality: [true]
+      daily_seasonality: [false]
+      use_lagged_regressors: [true]
+
+  - name: LSTM
+    enabled: false
+    param_grid:
+      window: [50]
+      learning_rate: [0.001]
+      architecture: ["stacked_lstm"]
+      n_layers: [1]
+      units: [32]
+      dropout: [0.2]
+      epochs: [30]
+      batch_size: [64]
+      early_stopping_patience: [5]
+
+  - name: RandomForestRegressor
+    enabled: true
+    param_grid:
+      n_estimators: [200, 400]
+      max_depth: [4, 6]
+      min_samples_leaf: [5, 10]
+
+  - name: HistGradientBoosting
+    enabled: true
+    param_grid:
+      learning_rate: [0.03, 0.05]
+      max_depth: [4, 6]
+      max_iter: [200, 300]
+      min_samples_leaf: [10, 20]
+
+backtest:
+  enabled: true
+  initial_train: 900
+  step: 15
+  horizon: 1
+  target: "ReturnFwd_1"
+  pip_size: 0.0001
+  threshold_pips: 10
+  plot_scale: "price"
+  risk_free: 0.0
+  periods_per_year: 252
+  metrics:
+    - mae
+    - rmse
+    - hit_rate
+    - accuracy
+    - f1_score
+    - precision
+    - recall
+    - dm_stat
+    - dm_pvalue
+    - sharpe
+    - sortino
+    - calmar
+    - max_drawdown
+    - profit_factor
+    - win_rate
+    - payoff_ratio
+    - consistency_ratio
+    - avg_trade_return
+    - n_test_points
+    - n_trades
+
+output:
+  dir: "outputs"
+  save_predictions: true
+  save_models: true
+  save_plots: false
+  formats:
+    - csv
+    - excel
+    - pdf
+
+trading:
+  min_pips_signal: 10.0
+  enable_confidence_filter: true
+  min_confidence: 0.60
+
+risk:
+  risk_per_trade_pct: 0.01
+  sl_mode: "atr"
+  fixed_sl_pips: 30.0
+  atr_sl_multiplier: 1.5
+  atr_sl_min_pips: 10.0
+  atr_sl_max_pips: 40.0
+  tp_rr_ratio: 2.0
+  entry_mode: "atr_pullback"
+  atr_entry_mult: 0.5
+
+logging:
+  enabled: true
+  level: "INFO"
+  to_file: true
+  file_path: "logs/trading.log"
+  to_console: true
+
+execution:
+  mode: "backtest"
+  parallel: false
+  n_jobs: -1
+
+scheduler:
+  enabled: true
+  cron: "0 7 * * 1"
+  timezone: "America/Bogota"
+  log_file: "logs/backtest_scheduler.log"
+
+model_selection:
+  primary_metric: "sharpe"
+  primary_greater_is_better: true
+  secondary_metric: "hit_rate"
+  secondary_greater_is_better: true
+  min_trades: 20
+  min_test_points: 50

@@ -1,14 +1,16 @@
 """
 utils/risk_utils.py
 
-Funciones de apoyo para gestión de riesgo:
-- cálculo de SL/TP a partir de config de riesgo y ATR/pips
-- cálculo de tamaño de posición dado balance y distancia al stop
+Funciones de apoyo para gestion de riesgo:
+- calculo de SL/TP a partir de config de riesgo y ATR/pips
+- calculo de tamano de posicion dado balance y distancia al stop
+- estimacion de riesgo monetario de posiciones abiertas o planificadas
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Literal, Optional, Dict
+from typing import Dict, Literal, Optional
 
 import numpy as np
 
@@ -19,13 +21,13 @@ Side = Literal["BUY", "SELL"]
 @dataclass
 class RiskConfig:
     risk_per_trade_pct: float = 0.01
-    sl_mode: str = "atr"  # "atr" o "fixed"
+    sl_mode: str = "atr"
     fixed_sl_pips: float = 30.0
     atr_sl_multiplier: float = 1.5
     atr_sl_min_pips: float = 10.0
     atr_sl_max_pips: float = 80.0
     tp_rr_ratio: float = 2.0
-    entry_mode: str = "close"  # "close" o "atr_pullback"
+    entry_mode: str = "close"
     atr_entry_mult: float = 0.5
 
 
@@ -52,36 +54,24 @@ def compute_entry_sl_tp(
     pip_size: float,
     risk_cfg_dict: Optional[Dict] = None,
 ) -> Dict[str, float]:
-    """Calcula entry, stop-loss y take-profit recomendados.
-
-    Devuelve un diccionario con:
-    - entry_price
-    - sl_price
-    - tp_price
-    - sl_pips
-    - tp_pips
-    """
+    """Calcula entry, stop-loss y take-profit recomendados."""
     cfg = _get_risk_config_from_dict(risk_cfg_dict or {})
     if pip_size <= 0:
         pip_size = 1e-4
 
-    # --- Entry ---
     entry_price = float(close_price)
     if cfg.entry_mode == "atr_pullback" and atr_value is not None and np.isfinite(atr_value):
-        # entrada ligeramente mejor que el cierre actual
         if side == "BUY":
             entry_price = close_price - cfg.atr_entry_mult * atr_value
         else:
             entry_price = close_price + cfg.atr_entry_mult * atr_value
 
-    # --- Stop loss en pips ---
     if cfg.sl_mode == "fixed" or atr_value is None or not np.isfinite(atr_value):
         sl_pips = cfg.fixed_sl_pips
     else:
         sl_pips = cfg.atr_sl_multiplier * (atr_value / pip_size)
         sl_pips = max(cfg.atr_sl_min_pips, min(sl_pips, cfg.atr_sl_max_pips))
 
-    # --- Precios de SL / TP ---
     if side == "BUY":
         sl_price = entry_price - sl_pips * pip_size
         tp_pips = sl_pips * cfg.tp_rr_ratio
@@ -100,6 +90,66 @@ def compute_entry_sl_tp(
     }
 
 
+def estimate_position_risk_amount(
+    entry_price: float,
+    sl_price: float,
+    point: float,
+    contract_size: float,
+    volume_lots: float,
+) -> float:
+    """Estima el riesgo monetario de una posicion abierta o planificada."""
+    if volume_lots <= 0:
+        return 0.0
+    if point <= 0 or contract_size <= 0:
+        return 0.0
+
+    price_risk = abs(entry_price - sl_price)
+    if price_risk <= 0:
+        return 0.0
+
+    ticks = price_risk / point
+    tick_value_per_lot = contract_size * point
+    return float(ticks * tick_value_per_lot * volume_lots)
+
+
+def calculate_position_size_for_risk_amount(
+    entry_price: float,
+    sl_price: float,
+    point: float,
+    contract_size: float,
+    risk_amount: float,
+    min_lot: float = 0.01,
+    lot_step: float = 0.01,
+) -> float:
+    """Calcula lotes para un riesgo monetario fijo.
+
+    Si el presupuesto no alcanza para el lote minimo del broker, devuelve 0.0.
+    """
+    if risk_amount <= 0:
+        return 0.0
+    if point <= 0 or contract_size <= 0:
+        return 0.0
+
+    price_risk = abs(entry_price - sl_price)
+    if price_risk <= 0:
+        return 0.0
+
+    ticks = price_risk / point
+    tick_value_per_lot = contract_size * point
+    denom = ticks * tick_value_per_lot
+    if denom <= 0:
+        return 0.0
+
+    raw_lots = risk_amount / denom
+    if raw_lots < min_lot:
+        return 0.0
+
+    lots = round(raw_lots / lot_step) * lot_step
+    if lots < min_lot:
+        return 0.0
+    return float(lots)
+
+
 def calculate_position_size(
     balance: float,
     entry_price: float,
@@ -110,20 +160,28 @@ def calculate_position_size(
     min_lot: float = 0.01,
     lot_step: float = 0.01,
 ) -> float:
-    """Calcula el tamaño de posición (lotes) dado:
+    """Calcula el tamano de posicion en lotes.
 
-    - balance: saldo de la cuenta
-    - entry_price: precio de entrada
-    - sl_price: precio de stop loss
-    - point: tamaño de tick (por ejemplo 0.0001 en EURUSD)
-    - contract_size: tamaño de contrato por 1.0 lote (por ejemplo 100000)
-    - risk_per_trade_pct: porcentaje de balance a arriesgar (0.01 = 1%)
-    - min_lot, lot_step: restricciones del broker
-
-    Aproximación: valor de 1 pip por lote ≈ contract_size * point.
+    Mantiene compatibilidad con la semantica historica del proyecto:
+    si el presupuesto de riesgo queda por debajo del lote minimo, fuerza el
+    lote minimo permitido.
     """
     if balance <= 0 or risk_per_trade_pct <= 0:
         return 0.0
+
+    risk_amount = balance * risk_per_trade_pct
+    strict_lots = calculate_position_size_for_risk_amount(
+        entry_price=entry_price,
+        sl_price=sl_price,
+        point=point,
+        contract_size=contract_size,
+        risk_amount=risk_amount,
+        min_lot=min_lot,
+        lot_step=lot_step,
+    )
+    if strict_lots > 0:
+        return strict_lots
+
     if point <= 0 or contract_size <= 0:
         return 0.0
 
@@ -131,20 +189,13 @@ def calculate_position_size(
     if price_risk <= 0:
         return 0.0
 
-    # número de ticks (pips "finos") entre entrada y stop
     ticks = price_risk / point
-
-    # valor de 1 tick por 1 lote en divisa de la cuenta (aprox)
-    pip_value_per_lot = contract_size * point
-
-    risk_amount = balance * risk_per_trade_pct
-    denom = ticks * pip_value_per_lot
+    tick_value_per_lot = contract_size * point
+    denom = ticks * tick_value_per_lot
     if denom <= 0:
         return 0.0
 
     raw_lots = risk_amount / denom
-
-    # aplicar mínimos y pasos
     lots = max(min_lot, raw_lots)
-    lots = round(lots / lot_step) * lot_step  # redondeo a múltiplo de lot_step
+    lots = round(lots / lot_step) * lot_step
     return float(lots)

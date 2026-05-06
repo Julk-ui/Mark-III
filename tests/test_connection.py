@@ -2,6 +2,7 @@
 """
 Pruebas para la conexión con MetaTrader 5.
 """
+from unittest import loader
 import pytest
 import yaml
 from pathlib import Path
@@ -26,7 +27,9 @@ def test_mt5_connection_and_shutdown(mt5_config):
         pytest.skip("Configuración de MT5 no encontrada en config.yaml")
     
     loader = DataLoader(mt5_config=mt5_config)
-    assert loader.is_connected(), "La conexión con MT5 debería haberse establecido en la inicialización."
+    loader.connect()
+    assert loader.is_connected(), "La conexión con MT5 debería haberse establecido con connect()."
+    loader.disconnect()
     
     # La conexión se cierra automáticamente al finalizar el contexto del loader.
     print("Conexión con MT5 establecida y cerrada correctamente.")

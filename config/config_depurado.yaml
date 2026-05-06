@@ -1,0 +1,208 @@
+# ===========================================
+# CONFIGURACIÓN DEPURADA DEL PROYECTO DE TRADING
+# Compatible con main_pipeline.py actual
+# ===========================================
+
+# --- CONEXIÓN MT5 ---
+mt5:
+  login: 68238343
+  password: "Colombia123*"
+  server: "RoboForex-Pro"
+  path: "C:\\Program Files\\RoboForex - MetaTrader 5\\terminal64.exe"
+
+# --- VALIDACIÓN / HOLDOUT ---
+# test_size lo usa el modo train
+# mode + n los usan backtest/test
+validation:
+  mode: last_n
+  n: 200
+  test_size: 0.20
+
+# --- DATOS ---
+data:
+  symbol: "EURUSD"
+  timeframe: "H1"
+  n_bars: 1500
+  use_cache: true
+  cache_expiry_hours: 24
+  pip_size: 0.0001
+  additional_symbols:
+    - "GBPUSD"
+    - "US500"
+
+# --- LIMPIEZA DE DATOS ---
+data_cleaning:
+  handle_missing: "ffill"
+  outlier_method: "iqr"
+  outlier_threshold: 3.0
+  handle_outliers: "cap"
+  remove_duplicates: true
+  validate_ohlc: true
+  min_valid_ratio: 0.90
+
+# --- EDA ---
+eda:
+  enabled: false
+  output_dir: "outputs/eda"
+  price_col: "Close"
+  plots:
+    price_series: true
+    returns_distribution: true
+    qq_plot: true
+    acf_pacf: true
+    rolling_volatility: true
+    seasonal_decomposition: true
+  acf_lags: 40
+  rolling_windows: [20, 60, 120]
+  seasonal_period: 7
+
+# --- FEATURE ENGINEERING ---
+features:
+  returns:
+    enabled: true
+    periods: [1, 5, 10]
+
+  technical_indicators:
+    enabled: true
+    indicators:
+      - sma_20
+      - sma_50
+      - ema_12
+      - ema_26
+      - rsi_14
+      - macd
+      - bollinger_bands
+      - atr_14
+
+  lag_features:
+    enabled: true
+    columns: ["Close", "Volume"]
+    lags: [1, 2, 3, 5, 10]
+
+# --- MODELOS ---
+# Mantengo solo modelos ya integrados en tu pipeline actual.
+models:
+  - name: Momentum
+    enabled: true
+    param_grid:
+      lookback: [1, 3, 5, 10]
+
+  - name: ARIMA
+    enabled: true
+    param_grid:
+      p: [1, 2, 3]
+      d: [0, 1]
+      q: [0, 1, 2]
+
+  - name: PROPHET
+    enabled: true
+    param_grid:
+      changepoint_prior_scale: [0.01, 0.05]
+      seasonality_prior_scale: [1.0, 10.0]
+      seasonality_mode: ["additive", "multiplicative"]
+      yearly_seasonality: [false]
+      weekly_seasonality: [true]
+      daily_seasonality: [false]
+      use_lagged_regressors: [true]
+
+  - name: LSTM
+    enabled: true
+    param_grid:
+      window: [50, 70]
+      learning_rate: [0.001]
+      architecture: ["stacked_lstm", "bidirectional_lstm"]
+      n_layers: [1]
+      units: [32]
+      dropout: [0.1, 0.2]
+      epochs: [50]
+      batch_size: [64]
+      early_stopping_patience: [5]
+
+# --- BACKTESTING ---
+backtest:
+  enabled: true
+  initial_train: 900
+  step: 15
+  horizon: 1
+  target: "ReturnFwd_1"
+  pip_size: 0.0001
+  threshold_pips: 10
+  plot_scale: "price"
+  risk_free: 0.0
+  periods_per_year: 252
+
+  # Solo métricas que hoy quedan coherentes con tu metrics.py y tu main_pipeline.py
+  metrics:
+    - mae
+    - rmse
+    - hit_rate
+    - dm_stat
+    - dm_pvalue
+    - sharpe
+    - sortino
+    - max_drawdown
+    - profit_factor
+    - win_rate
+    - payoff_ratio
+    - n_test_points
+    - n_trades
+
+# --- OUTPUT ---
+output:
+  dir: "outputs"
+  save_predictions: true
+  save_models: true
+  save_plots: true
+  formats:
+    - csv
+    - excel
+    - pdf
+
+# --- REGLAS DE TRADING ---
+trading:
+  min_pips_signal: 10.0
+
+# --- GESTIÓN DE RIESGO ---
+risk:
+  account_balance: 10000
+  risk_per_trade_pct: 0.01
+  sl_mode: "atr"
+  fixed_sl_pips: 30.0
+  atr_sl_multiplier: 1.5
+  atr_sl_min_pips: 10.0
+  atr_sl_max_pips: 40.0
+  tp_rr_ratio: 2.0
+  entry_mode: "atr_pullback"
+  atr_entry_mult: 0.5
+
+# --- LOGGING ---
+logging:
+  enabled: true
+  level: "INFO"
+  to_file: true
+  file_path: "logs/trading.log"
+  to_console: true
+
+# --- EJECUCIÓN ---
+execution:
+  mode: "backtest"
+  parallel: false
+  n_jobs: -1
+
+# --- SELECCIÓN DEL MEJOR MODELO ---
+# Se prioriza consistencia direccional y luego error.
+model_selection:
+  primary_metric: "hit_rate"
+  primary_greater_is_better: true
+  secondary_metric: "rmse"
+  secondary_greater_is_better: false
+  min_trades: 20
+  min_test_points: 50
+
+# --- SCHEDULER (opcional, para script externo) ---
+scheduler:
+  enabled: false
+  frequency: "weekly"
+  day_of_week: "sun"
+  hour: 6
+  minute: 0

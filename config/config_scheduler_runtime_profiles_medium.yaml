@@ -1,0 +1,52 @@
+# ==========================================================
+# SCHEDULER OPERATIVO PARA PERFILES CANONICOS / MEDIUM
+# Uso:
+# - correr production + sync_trades con releases serias
+# - pensado para consumir backtests publicados por:
+#   config_profile_aggressive_medium.yaml
+#   config_profile_balanced_medium.yaml
+#   config_profile_conservative_medium.yaml
+#
+# Comando recomendado:
+#   python scheduler_automation.py --config config/config_scheduler_runtime_profiles_medium.yaml
+#
+# Nota:
+# - este scheduler usa los perfiles canonicos:
+#   aggressive, balanced, conservative
+# - cada perfil necesita haber publicado su active_release_<perfil>.json
+# - por defecto arranca solo con balanced para una transicion gradual
+# ==========================================================
+
+scheduler:
+  enabled: true
+
+  cron:
+  backtest_cron:
+  production_cron:
+  sync_trades_cron:
+
+  backtest_interval_minutes:
+  production_interval_minutes: 5
+  sync_trades_interval_minutes: 1
+
+  # Perfiles canonicos habilitados para produccion.
+  # Empieza con balanced y luego agrega aggressive o conservative
+  # cuando confirmemos sus campeones.
+  production_profiles:
+    - balanced
+    # - aggressive
+    # - conservative
+
+  # Perfil base para sync_trades del runtime serio.
+  sync_trades_profile: balanced
+
+  # Separa el lanzamiento entre perfiles para no competir por lock o CPU
+  # exactamente en el mismo segundo.
+  production_profile_spacing_seconds: 25
+
+  # Desfase para que sync_trades no choque con production.
+  sync_trades_offset_seconds: 45
+
+  timezone: "America/Bogota"
+  log_file: "logs/automation_scheduler.log"
+  production_use_optimized_config: true

@@ -303,6 +303,11 @@ class FeatureEngineer:
             # Retorno simple
             df[f"Return{suffix}"] = df[price_col].pct_change(period)
             
+            # Retorno simple futuro a n pasos.
+            # Ej: ReturnFwd_4 en fecha t = (P[t+4] / P[t]) - 1
+            df[f"ReturnFwd{suffix}"] = (df[price_col].shift(-period) / df[price_col]) - 1.0
+
+            
             # Retorno logarítmico
             df[f"LogReturn{suffix}"] = np.log(
                 df[price_col] / df[price_col].shift(period)
@@ -313,37 +318,70 @@ class FeatureEngineer:
     @staticmethod
     def add_technical_indicators(
         df: pd.DataFrame,
-        price_col: str = "Close"
+        price_col: str = "Close",
+        indicators: list[str] | None = None,
     ) -> pd.DataFrame:
         """
         Agrega indicadores técnicos básicos
         """
         df = df.copy()
+        requested = {str(ind).strip().lower() for ind in (indicators or []) if str(ind).strip()}
+
+        def wants(*names: str) -> bool:
+            if not requested:
+                return True
+            normalized = {str(name).strip().lower() for name in names}
+            return any(name in requested for name in normalized)
+
+        def resolve_volume_column() -> str | None:
+            """Prioriza TickVolume cuando Volume real no aporta informacion."""
+            candidates = ["TickVolume", "Volume"]
+            for column in candidates:
+                if column not in df.columns:
+                    continue
+                series = pd.to_numeric(df[column], errors="coerce")
+                if series.notna().any() and series.abs().sum() > 0:
+                    return column
+            return None
         
         # Medias móviles
-        df["SMA_20"] = df[price_col].rolling(20).mean()
-        df["SMA_50"] = df[price_col].rolling(50).mean()
-        df["EMA_12"] = df[price_col].ewm(span=12, adjust=False).mean()
-        df["EMA_26"] = df[price_col].ewm(span=26, adjust=False).mean()
+        if wants("sma_20"):
+            df["SMA_20"] = df[price_col].rolling(20).mean()
+        if wants("sma_50"):
+            df["SMA_50"] = df[price_col].rolling(50).mean()
+        if wants("ema_12", "macd"):
+            df["EMA_12"] = df[price_col].ewm(span=12, adjust=False).mean()
+        if wants("ema_26", "macd"):
+            df["EMA_26"] = df[price_col].ewm(span=26, adjust=False).mean()
         
         # RSI
         delta = df[price_col].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-        rs = gain / loss
-        df["RSI_14"] = 100 - (100 / (1 + rs))
+        if wants("rsi_14"):
+            gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+            rs = gain / loss.replace(0, np.nan)
+            df["RSI_14"] = 100 - (100 / (1 + rs))
         
         # MACD
-        df["MACD"] = df["EMA_12"] - df["EMA_26"]
-        df["MACD_Signal"] = df["MACD"].ewm(span=9, adjust=False).mean()
-        df["MACD_Hist"] = df["MACD"] - df["MACD_Signal"]
+        if wants("macd"):
+            if "EMA_12" not in df.columns:
+                df["EMA_12"] = df[price_col].ewm(span=12, adjust=False).mean()
+            if "EMA_26" not in df.columns:
+                df["EMA_26"] = df[price_col].ewm(span=26, adjust=False).mean()
+            df["MACD"] = df["EMA_12"] - df["EMA_26"]
+            df["MACD_Signal"] = df["MACD"].ewm(span=9, adjust=False).mean()
+            df["MACD_Hist"] = df["MACD"] - df["MACD_Signal"]
         
         # Bollinger Bands
-        sma_20 = df[price_col].rolling(20).mean()
-        std_20 = df[price_col].rolling(20).std()
-        df["BB_Upper"] = sma_20 + (2 * std_20)
-        df["BB_Lower"] = sma_20 - (2 * std_20)
-        df["BB_Width"] = df["BB_Upper"] - df["BB_Lower"]
+        if wants("bollinger_bands", "bb_upper", "bb_lower", "bb_width"):
+            sma_20 = df[price_col].rolling(20).mean()
+            std_20 = df[price_col].rolling(20).std()
+            df["BB_Upper"] = sma_20 + (2 * std_20)
+            df["BB_Lower"] = sma_20 - (2 * std_20)
+            df["BB_Width"] = df["BB_Upper"] - df["BB_Lower"]
+
+        if wants("roc_6"):
+            df["ROC_6"] = df[price_col].pct_change(6)
         
         # ATR (si hay OHLC)
         if all(c in df.columns for c in ["High", "Low"]):
@@ -351,7 +389,46 @@ class FeatureEngineer:
             high_close = np.abs(df["High"] - df[price_col].shift())
             low_close = np.abs(df["Low"] - df[price_col].shift())
             tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-            df["ATR_14"] = tr.rolling(14).mean()
+            tr_sum_14 = tr.rolling(14).sum()
+            if wants("atr_14", "adx_14"):
+                df["ATR_14"] = tr.rolling(14).mean()
+
+            if wants("adx_14"):
+                up_move = df["High"].diff()
+                down_move = -df["Low"].diff()
+                plus_dm = pd.Series(
+                    np.where((up_move > down_move) & (up_move > 0), up_move, 0.0),
+                    index=df.index,
+                )
+                minus_dm = pd.Series(
+                    np.where((down_move > up_move) & (down_move > 0), down_move, 0.0),
+                    index=df.index,
+                )
+                plus_di = 100.0 * plus_dm.rolling(14).sum() / tr_sum_14.replace(0, np.nan)
+                minus_di = 100.0 * minus_dm.rolling(14).sum() / tr_sum_14.replace(0, np.nan)
+                dx = 100.0 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, np.nan)
+                df["ADX_14"] = dx.rolling(14).mean()
+
+        volume_column = resolve_volume_column()
+        if volume_column is not None:
+            volume_series = pd.to_numeric(df[volume_column], errors="coerce")
+            if wants("tick_volume_roc_3"):
+                df["TickVolume_ROC_3"] = volume_series.pct_change(3)
+            if wants("tick_volume_zscore_20"):
+                volume_mean_20 = volume_series.rolling(20).mean()
+                volume_std_20 = volume_series.rolling(20).std()
+                df["TickVolume_ZScore_20"] = (volume_series - volume_mean_20) / volume_std_20.replace(0, np.nan)
+
+            if wants("mfi_14") and all(c in df.columns for c in ["High", "Low"]):
+                typical_price = (df["High"] + df["Low"] + df[price_col]) / 3.0
+                raw_money_flow = typical_price * volume_series
+                tp_delta = typical_price.diff()
+                positive_flow = raw_money_flow.where(tp_delta > 0, 0.0)
+                negative_flow = raw_money_flow.where(tp_delta < 0, 0.0).abs()
+                positive_mf = positive_flow.rolling(14).sum()
+                negative_mf = negative_flow.rolling(14).sum()
+                money_ratio = positive_mf / negative_mf.replace(0, np.nan)
+                df["MFI_14"] = 100 - (100 / (1 + money_ratio))
         
         return df
     

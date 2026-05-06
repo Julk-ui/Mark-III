@@ -1,0 +1,173 @@
+mt5:
+  login: 68238343
+  password: Colombia123*
+  server: RoboForex-Pro
+  path: C:\Program Files\RoboForex - MetaTrader 5\terminal64.exe
+validation:
+  enabled: true
+  method: time_series_split
+  n_splits: 5
+  test_size: 0.2
+data:
+  symbol: EURUSD
+  timeframe: D1
+  n_bars: 900
+  use_cache: true
+  cache_expiry_hours: 24
+  pip_size: 0.0001
+  additional_symbols:
+  - GBPUSD
+  - US500
+data_cleaning:
+  handle_missing: ffill
+  outlier_method: iqr
+  outlier_threshold: 3.0
+  handle_outliers: cap
+  remove_duplicates: true
+  validate_ohlc: true
+  min_valid_ratio: 0.9
+eda:
+  enabled: false
+  output_dir: outputs/eda
+  price_col: Close
+  plots:
+    price_series: true
+    returns_distribution: true
+    qq_plot: true
+    acf_pacf: true
+    rolling_volatility: true
+    seasonal_decomposition: true
+  acf_lags: 40
+  rolling_windows:
+  - 20
+  - 60
+  - 120
+  seasonal_period: 7
+features:
+  returns:
+    enabled: true
+    periods:
+    - 1
+    - 5
+    - 10
+  technical_indicators:
+    enabled: true
+    indicators:
+    - sma_20
+    - sma_50
+    - ema_12
+    - ema_26
+    - rsi_14
+    - macd
+    - bollinger_bands
+    - atr_14
+  lag_features:
+    enabled: true
+    columns:
+    - Close
+    - Volume
+    lags:
+    - 1
+    - 2
+    - 3
+    - 5
+    - 10
+models:
+- name: Momentum
+  enabled: true
+  param_grid:
+    lookback: [1, 3, 5]
+- name: ARIMA
+  enabled: true
+  param_grid:
+    p:
+    - 1
+    - 2
+    d:
+    - 0
+    q:
+    - 0
+    - 1
+- name: PROPHET
+  enabled: false
+  param_grid:
+    changepoint_prior_scale:
+    - 0.1
+    seasonality_prior_scale:
+    - 10.0
+    seasonality_mode:
+    - multiplicative
+    yearly_seasonality:
+    - false
+    weekly_seasonality:
+    - true
+    daily_seasonality:
+    - false
+    use_lagged_regressors:
+    - true
+- name: LSTM
+  enabled: true
+  param_grid:
+    window:
+    - 20
+    learning_rate:
+    - 0.001
+    architecture:
+    - stacked_lstm
+    n_layers:
+    - 1
+    units:
+    - 16
+    dropout:
+    - 0.2
+    epochs:
+    - 3
+    batch_size:
+    - 64
+    early_stopping_patience:
+    - 1
+backtest:
+  enabled: true
+  initial_train: 500
+  step: 20
+  horizon: 1
+  target: ReturnFwd_1
+  pip_size: 0.0001
+  threshold_pips: 12.0
+  plot_scale: "price"
+metrics:
+- mae
+- rmse
+- hit_rate
+- sharpe
+- sortino
+- max_drawdown
+- profit_factor
+- win_rate
+- payoff_ratio
+threshold_pips: 12.0
+pip_size: 0.0001
+output:
+  dir: outputs
+  save_predictions: true
+  save_models: false
+  save_plots: true
+  formats:
+  - csv
+  - excel
+  - pdf
+logging:
+  enabled: true
+  level: INFO
+  to_file: true
+  file_path: logs/trading.log
+  to_console: true
+execution:
+  mode: backtest
+  parallel: false
+  n_jobs: -1
+model_selection:
+  primary_metric: hit_rate
+  primary_greater_is_better: true
+  secondary_metric: rmse
+  secondary_greater_is_better: false

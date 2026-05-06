@@ -10,6 +10,7 @@ from prophet import Prophet
 import pickle
 import joblib
 from pathlib import Path
+from inspect import signature
 from .base_model import BaseModel
 
 class ProphetModel(BaseModel):
@@ -27,13 +28,18 @@ class ProphetModel(BaseModel):
         try:
             # 1. Preparar el DataFrame para Prophet
             df_train = pd.DataFrame({'ds': y_train.index, 'y': y_train.values})
+            use_lagged_regressors = self.params.get('use_lagged_regressors', True)
+                        # ---- FILTRO ROBUSTO DE PARAMS ----
+            allowed = set(signature(Prophet.__init__).parameters.keys()) - {"self"}
+            raw_params = {k: v for k, v in self.params.items() if k != "use_lagged_regressors"}
+            prophet_params = {k: v for k, v in raw_params.items() if k in allowed}
 
-            # Parámetros del modelo
-            prophet_params = {k: v for k, v in self.params.items() if k != 'use_lagged_regressors'}
-            use_lagged_regressors = self.params.get('use_lagged_regressors', False)
+            ignored = sorted(set(raw_params.keys()) - set(prophet_params.keys()))
+            if ignored:
+                self.logger.warning(f"Prophet: parámetros ignorados (no válidos en __init__): {ignored}")
 
             self.model = Prophet(**prophet_params)
-
+            # ----------------------------------
             # 2. Añadir regresores (features)
             regressors = []
             if X_train is not None and not X_train.empty:

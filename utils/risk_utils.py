@@ -27,6 +27,9 @@ class RiskConfig:
     atr_sl_min_pips: float = 10.0
     atr_sl_max_pips: float = 80.0
     tp_rr_ratio: float = 2.0
+    tp_use_predicted_move: bool = False
+    tp_min_pips: float = 0.0
+    tp_max_pips: float = 0.0
     entry_mode: str = "close"
     atr_entry_mult: float = 0.5
 
@@ -42,9 +45,35 @@ def _get_risk_config_from_dict(cfg: Dict) -> RiskConfig:
         atr_sl_min_pips=float(cfg.get("atr_sl_min_pips", 10.0)),
         atr_sl_max_pips=float(cfg.get("atr_sl_max_pips", 80.0)),
         tp_rr_ratio=float(cfg.get("tp_rr_ratio", 2.0)),
+        tp_use_predicted_move=bool(cfg.get("tp_use_predicted_move", False)),
+        tp_min_pips=float(cfg.get("tp_min_pips", 0.0)),
+        tp_max_pips=float(cfg.get("tp_max_pips", 0.0)),
         entry_mode=str(cfg.get("entry_mode", "close")),
         atr_entry_mult=float(cfg.get("atr_entry_mult", 0.5)),
     )
+
+
+def compute_take_profit_pips(
+    *,
+    sl_pips: float,
+    risk_cfg_dict: Optional[Dict] = None,
+    predicted_pips_target: Optional[float] = None,
+) -> float:
+    """Calcula take-profit en pips respetando RR y opcionalmente el movimiento esperado."""
+    cfg = _get_risk_config_from_dict(risk_cfg_dict or {})
+
+    rr_base_tp = max(float(sl_pips), 0.0) * max(float(cfg.tp_rr_ratio), 0.1)
+    tp_pips = rr_base_tp
+
+    if cfg.tp_use_predicted_move and predicted_pips_target is not None and np.isfinite(predicted_pips_target):
+        tp_pips = max(tp_pips, abs(float(predicted_pips_target)))
+
+    if cfg.tp_min_pips > 0:
+        tp_pips = max(tp_pips, float(cfg.tp_min_pips))
+    if cfg.tp_max_pips > 0:
+        tp_pips = min(tp_pips, float(cfg.tp_max_pips))
+
+    return float(tp_pips)
 
 
 def compute_entry_sl_tp(
@@ -53,6 +82,7 @@ def compute_entry_sl_tp(
     atr_value: Optional[float],
     pip_size: float,
     risk_cfg_dict: Optional[Dict] = None,
+    predicted_pips_target: Optional[float] = None,
 ) -> Dict[str, float]:
     """Calcula entry, stop-loss y take-profit recomendados."""
     cfg = _get_risk_config_from_dict(risk_cfg_dict or {})
@@ -72,13 +102,17 @@ def compute_entry_sl_tp(
         sl_pips = cfg.atr_sl_multiplier * (atr_value / pip_size)
         sl_pips = max(cfg.atr_sl_min_pips, min(sl_pips, cfg.atr_sl_max_pips))
 
+    tp_pips = compute_take_profit_pips(
+        sl_pips=sl_pips,
+        risk_cfg_dict=risk_cfg_dict,
+        predicted_pips_target=predicted_pips_target,
+    )
+
     if side == "BUY":
         sl_price = entry_price - sl_pips * pip_size
-        tp_pips = sl_pips * cfg.tp_rr_ratio
         tp_price = entry_price + tp_pips * pip_size
     else:
         sl_price = entry_price + sl_pips * pip_size
-        tp_pips = sl_pips * cfg.tp_rr_ratio
         tp_price = entry_price - tp_pips * pip_size
 
     return {

@@ -1,0 +1,128 @@
+2026-06-07 10:05:30,606 | INFO | Ejecutando job 'production' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode production --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:05:55,488 | WARNING | Se omite job 'production': hay otra ejecucion activa en el grupo 'automation_scheduler.production.lock'.
+2026-06-07 10:06:00,521 | WARNING | Interrupcion de consola ignorada (signal=2). El scheduler sigue activo.
+2026-06-07 10:06:00,575 | WARNING | Se omite job 'sync_trades': hay otra ejecucion activa en el grupo 'automation_scheduler.management.aggressive_hybrid_v1_3_tp5_sl3.lock'.
+2026-06-07 10:06:05,556 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:06:05,783 | INFO | Señal production [aggressive_hybrid_v1_3_tp5_sl3]: ts=2026-06-05 23:55:00 signal=HOLD primary=HOLD(0.555) filter=HOLD support=0.0 pips=1.066258662062485 reason=signal_hold entry= sl= tp=
+2026-06-07 10:06:05,784 | INFO | Job 'production' completado.
+2026-06-07 10:06:58,698 | WARNING | Interrupcion de consola ignorada (signal=2). El scheduler sigue activo.
+2026-06-07 10:07:00,383 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:07:41,199 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:07:41,199 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:08:00,383 | WARNING | Interrupcion de consola ignorada (signal=2). El scheduler sigue activo.
+2026-06-07 10:08:00,392 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:08:25,366 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:08:25,368 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:09:00,390 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:09:19,911 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:09:19,912 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:09:41,724 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:10:00,392 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:10:19,986 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:10:19,988 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:10:30,595 | INFO | Ejecutando job 'production' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode production --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:10:55,391 | WARNING | Se omite job 'production': hay otra ejecucion activa en el grupo 'automation_scheduler.production.lock'.
+2026-06-07 10:10:58,298 | INFO | Señal production [aggressive_hybrid_v1_3_tp5_sl3]: ts=2026-06-05 23:55:00 signal=HOLD primary=HOLD(0.555) filter=HOLD support=0.0 pips=1.066258662062485 reason=signal_hold entry= sl= tp=
+2026-06-07 10:10:58,299 | INFO | Job 'production' completado.
+2026-06-07 10:11:00,381 | WARNING | Interrupcion de consola ignorada (signal=2). El scheduler sigue activo.
+2026-06-07 10:11:00,389 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:11:22,028 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:11:22,029 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:11:43,602 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:12:00,394 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:12:20,315 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:12:20,316 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:13:00,393 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:13:59,870 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:13:59,871 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:14:00,377 | WARNING | Interrupcion de consola ignorada (signal=2). El scheduler sigue activo.
+2026-06-07 10:14:00,387 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:14:19,193 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:14:19,194 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:15:00,394 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:15:22,472 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:15:22,473 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:15:30,384 | WARNING | Interrupcion de consola ignorada (signal=2). El scheduler sigue activo.
+2026-06-07 10:15:30,640 | INFO | Ejecutando job 'production' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode production --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:15:51,351 | INFO | Señal production [aggressive_hybrid_v1_3_tp5_sl3]: ts=2026-06-05 23:55:00 signal=HOLD primary=HOLD(0.555) filter=HOLD support=0.0 pips=1.066258662062485 reason=signal_hold entry= sl= tp=
+2026-06-07 10:15:51,354 | INFO | Job 'production' completado.
+2026-06-07 10:15:55,528 | INFO | Ejecutando job 'production' [aggressive_hybrid_v1_4_mid_r3_4p6b_hybrid_champion_fast]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode production --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260603_075730.yaml
+2026-06-07 10:16:00,375 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:16:18,132 | INFO | Señal production [aggressive_hybrid_v1_4_mid_r3_4p6b_hybrid_champion_fast]: ts=2026-06-05 23:55:00 signal=HOLD primary=HOLD(0.555) filter=HOLD support=0.0 pips=1.066258662062485 reason=signal_hold entry= sl= tp=
+2026-06-07 10:16:18,133 | INFO | Job 'production' completado.
+2026-06-07 10:16:24,159 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:16:24,162 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:17:00,386 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:17:19,806 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:17:19,807 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:17:40,896 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:18:00,383 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:18:19,672 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:18:19,673 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:19:00,386 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:19:19,825 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:19:19,827 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:19:42,931 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:20:00,380 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:20:19,529 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:20:19,530 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:20:30,573 | INFO | Ejecutando job 'production' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode production --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:20:50,669 | INFO | Señal production [aggressive_hybrid_v1_3_tp5_sl3]: ts=2026-06-05 23:55:00 signal=HOLD primary=HOLD(0.555) filter=HOLD support=0.0 pips=1.066258662062485 reason=signal_hold entry= sl= tp=
+2026-06-07 10:20:50,669 | INFO | Job 'production' completado.
+2026-06-07 10:20:55,551 | INFO | Ejecutando job 'production' [aggressive_hybrid_v1_4_mid_r3_4p6b_hybrid_champion_fast]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode production --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260603_075730.yaml
+2026-06-07 10:21:00,386 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:21:16,466 | INFO | Señal production [aggressive_hybrid_v1_4_mid_r3_4p6b_hybrid_champion_fast]: ts=2026-06-05 23:55:00 signal=HOLD primary=HOLD(0.555) filter=HOLD support=0.0 pips=1.066258662062485 reason=signal_hold entry= sl= tp=
+2026-06-07 10:21:16,469 | INFO | Job 'production' completado.
+2026-06-07 10:21:22,467 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:21:22,468 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:22:00,383 | WARNING | Interrupcion de consola ignorada (signal=2). El scheduler sigue activo.
+2026-06-07 10:22:00,389 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:22:20,736 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:22:20,738 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:23:00,385 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:23:22,767 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:23:22,768 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:24:00,374 | WARNING | Interrupcion de consola ignorada (signal=2). El scheduler sigue activo.
+2026-06-07 10:24:00,384 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:24:19,865 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:24:19,867 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:25:00,427 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:25:23,050 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:25:23,051 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:25:30,375 | WARNING | Interrupcion de consola ignorada (signal=2). El scheduler sigue activo.
+2026-06-07 10:25:30,568 | INFO | Ejecutando job 'production' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode production --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:25:50,370 | INFO | Señal production [aggressive_hybrid_v1_3_tp5_sl3]: ts=2026-06-05 23:55:00 signal=HOLD primary=HOLD(0.555) filter=HOLD support=0.0 pips=1.066258662062485 reason=signal_hold entry= sl= tp=
+2026-06-07 10:25:50,370 | INFO | Job 'production' completado.
+2026-06-07 10:25:55,544 | INFO | Ejecutando job 'production' [aggressive_hybrid_v1_4_mid_r3_4p6b_hybrid_champion_fast]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode production --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260603_075730.yaml
+2026-06-07 10:26:00,391 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:26:14,098 | INFO | Señal production [aggressive_hybrid_v1_4_mid_r3_4p6b_hybrid_champion_fast]: ts=2026-06-05 23:55:00 signal=HOLD primary=HOLD(0.555) filter=HOLD support=0.0 pips=1.066258662062485 reason=signal_hold entry= sl= tp=
+2026-06-07 10:26:14,099 | INFO | Job 'production' completado.
+2026-06-07 10:26:20,328 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:26:20,330 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:27:00,382 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:27:18,344 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:27:18,345 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:27:39,873 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:28:00,377 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:28:20,558 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:28:20,560 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:29:00,386 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:29:20,090 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:29:20,091 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:29:40,364 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:30:00,391 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:30:18,721 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:30:18,723 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:30:30,577 | INFO | Ejecutando job 'production' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode production --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:30:48,581 | INFO | Señal production [aggressive_hybrid_v1_3_tp5_sl3]: ts=2026-06-05 23:55:00 signal=HOLD primary=HOLD(0.555) filter=HOLD support=0.0 pips=1.066258662062485 reason=signal_hold entry= sl= tp=
+2026-06-07 10:30:48,584 | INFO | Job 'production' completado.
+2026-06-07 10:30:55,594 | INFO | Ejecutando job 'production' [aggressive_hybrid_v1_4_mid_r3_4p6b_hybrid_champion_fast]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode production --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260603_075730.yaml
+2026-06-07 10:31:00,400 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:31:27,161 | INFO | Señal production [aggressive_hybrid_v1_4_mid_r3_4p6b_hybrid_champion_fast]: ts=2026-06-05 23:55:00 signal=HOLD primary=HOLD(0.555) filter=HOLD support=0.0 pips=1.066258662062485 reason=signal_hold entry= sl= tp=
+2026-06-07 10:31:27,163 | INFO | Job 'production' completado.
+2026-06-07 10:31:29,728 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:31:29,729 | INFO | Job 'sync_trades' completado.
+2026-06-07 10:32:00,379 | WARNING | Interrupcion de consola ignorada (signal=2). El scheduler sigue activo.
+2026-06-07 10:32:00,391 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-07 10:32:28,440 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=6 break_even=0 partials=0 pending=0 last_signal=2026-06-05 23:35:00 last_action=-
+2026-06-07 10:32:28,441 | INFO | Job 'sync_trades' completado.

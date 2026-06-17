@@ -1,0 +1,10 @@
+{
+  "release_id": "20260512_153418",
+  "activated_at": "2026-05-12T21:43:22",
+  "champion_model": "HYBRID__ARIMA__HistGradientBoostingClassifier",
+  "strategy_profile": "aggressive_hybrid_v1_3_tp4_sl2_5",
+  "config_path": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\config\\config_optimizado_20260512_153418.yaml",
+  "models_dir": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\outputs\\models\\releases\\20260512_153418",
+  "summary_csv_path": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\outputs\\backtest\\summary_best_runs_20260512_153418.csv",
+  "summary_xlsx_path": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\outputs\\backtest\\summary_best_runs_20260512_153418.xlsx"
+}

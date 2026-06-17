@@ -1,0 +1,32 @@
+# ==========================================================
+# SCHEDULER OPERATIVO PARA aggressive_barrier_v3
+# Uso:
+# - correr production + sync_trades con la ultima release activa
+#   del perfil aggressive_barrier_v3
+# - pensado para operar v3 sin mezclarlo con schedulers light,
+#   medium o barrier_v2
+# ==========================================================
+
+scheduler:
+  enabled: true
+
+  cron:
+  backtest_cron:
+  production_cron:
+  sync_trades_cron:
+
+  backtest_interval_minutes:
+  production_interval_minutes: 5
+  sync_trades_interval_minutes: 1
+
+  production_profiles:
+    - aggressive_barrier_v3
+
+  sync_trades_profile: aggressive_barrier_v3
+
+  production_profile_spacing_seconds: 25
+  sync_trades_offset_seconds: 45
+
+  timezone: "America/Bogota"
+  log_file: "logs/automation_scheduler.log"
+  production_use_optimized_config: true

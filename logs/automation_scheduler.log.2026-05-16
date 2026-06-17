@@ -1,0 +1,102 @@
+2026-05-16 09:39:57,418 | INFO | Ejecutando job 'production' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode production --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-05-16 09:40:27,395 | WARNING | Se omite job 'sync_trades': hay otra ejecucion activa en el grupo 'automation_scheduler.management.lock'.
+2026-05-16 09:40:33,357 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:41:15,947 | INFO | STDOUT production:
+Configuracion cargada desde: C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-05-16 09:40:08 | INFO     | ============================================================
+2026-05-16 09:40:08 | INFO     | TRADING PIPELINE INICIADO
+2026-05-16 09:40:08 | INFO     | ============================================================
+2026-05-16 09:40:08 | INFO     | 📁 Directorios de trabajo configurados
+2026-05-16 09:40:08 | INFO     | 🚀 Ejecutando modo: PRODUCTION
+2026-05-16 09:40:08 | INFO     | 
+============================================================
+2026-05-16 09:40:08 | INFO     | MODO: PRODUCCIÓN
+2026-05-16 09:40:08 | INFO     | ============================================================
+
+2026-05-16 09:40:08 | INFO     | 📥 Cargando datos para producción...
+2026-05-16 09:40:08 | INFO     | PASO 1: CARGANDO DATOS
+2026-05-16 09:40:08 | INFO     | ------------------------------------------------------------
+2026-05-16 09:40:08 | INFO     |   -> Runtime data policy: use_cache=False, cache_expiry_hours=0.08333333333333333
+📥 Descargando EURUSD (M5) - 8000 barras...
+
+2026-05-16 09:41:15,948 | WARNING | STDERR production:
+Traceback (most recent call last):
+  File "C:\Users\USER\Documentos\Maestria\Mark-III\main_pipeline.py", line 9180, in <module>
+    pipeline.run(mode=args.mode)
+  File "C:\Users\USER\Documentos\Maestria\Mark-III\main_pipeline.py", line 5958, in run
+    self._run_production_mode()
+  File "C:\Users\USER\Documentos\Maestria\Mark-III\main_pipeline.py", line 7567, in _run_production_mode
+    df_raw = self._load_data()
+             ^^^^^^^^^^^^^^^^^
+  File "C:\Users\USER\Documentos\Maestria\Mark-III\main_pipeline.py", line 8843, in _load_data
+    df = self.data_loader.load_data(
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\USER\Documentos\Maestria\Mark-III\data\data_loader.py", line 87, in load_data
+    self.connect()
+  File "C:\Users\USER\Documentos\Maestria\Mark-III\data\data_loader.py", line 41, in connect
+    self.mt5_client = Basic_funcs(
+                      ^^^^^^^^^^^^
+  File "C:\Users\USER\Documentos\Maestria\Mark-III\conexion\easy_Trading.py", line 45, in __init__
+    self._connect()
+  File "C:\Users\USER\Documentos\Maestria\Mark-III\conexion\easy_Trading.py", line 55, in _connect
+    raise RuntimeError(f"MT5 initialize failed: {mt5.last_error()}")
+RuntimeError: MT5 initialize failed: (-10005, 'IPC timeout')
+2026-05-16 09:41:27,402 | WARNING | Se omite job 'sync_trades': hay otra ejecucion activa en el grupo 'automation_scheduler.management.lock'.
+2026-05-16 09:41:56,398 | INFO | STDOUT monitor_runtime:
+Configuracion cargada desde: C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+
+2026-05-16 09:41:56,399 | WARNING | STDERR monitor_runtime:
+Traceback (most recent call last):
+  File "C:\Users\USER\Documentos\Maestria\Mark-III\main_pipeline.py", line 9180, in <module>
+    pipeline.run(mode=args.mode)
+  File "C:\Users\USER\Documentos\Maestria\Mark-III\main_pipeline.py", line 5964, in run
+    self._run_monitor_runtime_mode()
+  File "C:\Users\USER\Documentos\Maestria\Mark-III\main_pipeline.py", line 8726, in _run_monitor_runtime_mode
+    self._ensure_mt5_client()
+  File "C:\Users\USER\Documentos\Maestria\Mark-III\main_pipeline.py", line 497, in _ensure_mt5_client
+    self.data_loader.connect()
+  File "C:\Users\USER\Documentos\Maestria\Mark-III\data\data_loader.py", line 41, in connect
+    self.mt5_client = Basic_funcs(
+                      ^^^^^^^^^^^^
+  File "C:\Users\USER\Documentos\Maestria\Mark-III\conexion\easy_Trading.py", line 45, in __init__
+    self._connect()
+  File "C:\Users\USER\Documentos\Maestria\Mark-III\conexion\easy_Trading.py", line 55, in _connect
+    raise RuntimeError(f"MT5 initialize failed: {mt5.last_error()}")
+RuntimeError: MT5 initialize failed: (-10005, 'IPC timeout')
+2026-05-16 09:42:27,396 | WARNING | Se omite job 'sync_trades': hay otra ejecucion activa en el grupo 'automation_scheduler.management.lock'.
+2026-05-16 09:43:07,666 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:43:27,400 | WARNING | Se omite job 'sync_trades': hay otra ejecucion activa en el grupo 'automation_scheduler.management.lock'.
+2026-05-16 09:43:37,584 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:44:06,315 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:44:27,394 | WARNING | Se omite job 'sync_trades': hay otra ejecucion activa en el grupo 'automation_scheduler.management.lock'.
+2026-05-16 09:44:37,866 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:44:58,169 | INFO | Ejecutando job 'production' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode production --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-05-16 09:45:22,152 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:45:27,393 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-05-16 09:45:42,875 | INFO | Señal production [aggressive_hybrid_v1_3_tp5_sl3]: ts=2026-05-15 23:55:00 signal=HOLD primary=HOLD(0.517) filter=HOLD support=0.0 pips=-1.349206821346352 reason=signal_hold entry= sl= tp=
+2026-05-16 09:45:42,875 | INFO | Job 'production' completado.
+2026-05-16 09:45:45,838 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:45:45,839 | INFO | Job 'sync_trades' completado.
+2026-05-16 09:46:27,396 | WARNING | Se omite job 'sync_trades': hay otra ejecucion activa en el grupo 'automation_scheduler.management.lock'.
+2026-05-16 09:46:30,407 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:47:06,893 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:47:27,399 | WARNING | Se omite job 'sync_trades': hay otra ejecucion activa en el grupo 'automation_scheduler.management.lock'.
+2026-05-16 09:47:37,704 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:48:09,506 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:48:27,404 | WARNING | Se omite job 'sync_trades': hay otra ejecucion activa en el grupo 'automation_scheduler.management.lock'.
+2026-05-16 09:48:37,419 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:49:04,197 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:49:27,391 | WARNING | Se omite job 'sync_trades': hay otra ejecucion activa en el grupo 'automation_scheduler.management.lock'.
+2026-05-16 09:49:38,648 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:49:57,486 | INFO | Ejecutando job 'production' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode production --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-05-16 09:50:02,746 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:50:23,563 | INFO | Señal production [aggressive_hybrid_v1_3_tp5_sl3]: ts=2026-05-15 23:55:00 signal=HOLD primary=HOLD(0.517) filter=HOLD support=0.0 pips=-1.349206821346352 reason=signal_hold entry= sl= tp=
+2026-05-16 09:50:23,563 | INFO | Job 'production' completado.
+2026-05-16 09:50:27,391 | WARNING | Se omite job 'sync_trades': hay otra ejecucion activa en el grupo 'automation_scheduler.management.lock'.
+2026-05-16 09:50:35,268 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:51:06,256 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:51:27,391 | WARNING | Se omite job 'sync_trades': hay otra ejecucion activa en el grupo 'automation_scheduler.management.lock'.
+2026-05-16 09:51:34,977 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:52:05,692 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-05-16 09:52:27,404 | WARNING | Se omite job 'sync_trades': hay otra ejecucion activa en el grupo 'automation_scheduler.management.lock'.
+2026-05-16 09:52:44,668 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-

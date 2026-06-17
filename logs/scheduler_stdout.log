@@ -1,0 +1,16 @@
+2026-06-03 10:53:31,082 | INFO | Job registrado: mode=sync_trades profile=aggressive_hybrid_v1_3_tp5_sl3 schedule=cada 1 minuto(s) con offset de 50s profile=aggressive_hybrid_v1_3_tp5_sl3 timezone=America/Bogota
+2026-06-03 10:53:31,084 | INFO | Job registrado: mode=monitor_runtime profile=aggressive_hybrid_v1_3_tp5_sl3 schedule=cada 15 segundo(s) con offset de 8s profile=aggressive_hybrid_v1_3_tp5_sl3 timezone=America/Bogota
+2026-06-03 10:53:31,097 | INFO | Job registrado: mode=production profile=aggressive_hybrid_v1_3_tp5_sl3 schedule=cada 5 minuto(s) con offset de 20s profile=aggressive_hybrid_v1_3_tp5_sl3 timezone=America/Bogota
+2026-06-03 10:53:31,134 | INFO | Ejecutando job 'production' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode production --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-03 10:53:44,513 | INFO | Señal production [aggressive_hybrid_v1_3_tp5_sl3]: ts=2026-06-03 18:50:00 signal=HOLD primary=HOLD(0.627) filter=HOLD support=0.0 pips=-2.7489459124060596 reason=signal_hold entry= sl= tp=
+2026-06-03 10:53:44,514 | INFO | Job 'production' completado.
+2026-06-03 10:53:44,516 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-03 10:53:51,410 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-06-03 10:53:51,410 | INFO | Job 'sync_trades' completado.
+2026-06-03 10:53:57,982 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-06-03 10:53:57,983 | INFO | Scheduler iniciado.
+2026-06-03 10:54:15,430 | INFO | Riesgo monitor_runtime [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-06-03 10:54:21,093 | INFO | Ejecutando job 'sync_trades' [aggressive_hybrid_v1_3_tp5_sl3]: C:\Users\USER\Documentos\Maestria\Mark-III\.venv\Scripts\python.exe main_pipeline.py --mode sync_trades --config C:\Users\USER\Documentos\Maestria\Mark-III\config\config_optimizado_20260513_152459.yaml
+2026-06-03 10:54:26,160 | INFO | Riesgo sync_trades [aggressive_hybrid_v1_3_tp5_sl3]: open=0 break_even=0 partials=0 pending=0 last_signal=- last_action=-
+2026-06-03 10:54:26,261 | INFO | Job 'sync_trades' completado.
+2026-06-03 10:54:39,091 | INFO | Scheduler detenido por interrupcion externa.

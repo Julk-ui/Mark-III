@@ -1,0 +1,297 @@
+# ==========================================================
+# PERFIL V1.5 | CONTINUATION MODEL FAST
+# Objetivo:
+# - mantener el modelo de continuación/pullback
+# - reducir drásticamente el tiempo de ejecución
+# ==========================================================
+
+mt5:
+  login: 68238343
+  password: "Colombia123*"
+  server: "RoboForex-Pro"
+  path: "C:\\Program Files\\RoboForex - MetaTrader 5\\terminal64.exe"
+
+strategy_profile:
+  name: "aggressive_hybrid_v1_5_continuation_model_fast"
+
+prediction_stack:
+  mode: "hybrid_primary_plus_filter"
+  primary_models:
+    - Ridge
+    - RandomForestRegressor
+    - HistGradientBoosting
+  filter_models:
+    - RandomForestClassifier
+    - HistGradientBoostingClassifier
+    - LogisticRegressionClassifier
+    - ExtraTreesClassifier
+  require_alignment: true
+  filter_gate_mode: "support_score"
+  support_score_min: 0.08
+  contradiction_margin: 0.10
+  top_k_primary_for_bundle_eval: 2
+  top_k_filter_for_bundle_eval: 2
+
+validation:
+  mode: last_n
+  n: 400
+  test_size: 0.2
+
+data:
+  symbol: "EURUSD"
+  timeframe: "M5"
+  n_bars: 5000
+  use_cache: true
+  cache_expiry_hours: 1
+  runtime_use_cache: false
+  runtime_cache_expiry_minutes: 5
+  pip_size: 0.0001
+
+data_cleaning:
+  handle_missing: "ffill"
+  outlier_method: "iqr"
+  outlier_threshold: 3.0
+  handle_outliers: "cap"
+  remove_duplicates: true
+  validate_ohlc: true
+  min_valid_ratio: 0.90
+
+eda:
+  enabled: false
+  output_dir: "outputs/eda"
+  price_col: "Close"
+
+features:
+  returns:
+    enabled: true
+    periods: [1, 2, 3, 4, 5, 10]
+
+  technical_indicators:
+    enabled: true
+    indicators:
+      - sma_20
+      - sma_50
+      - ema_12
+      - ema_26
+      - rsi_14
+      - macd
+      - bollinger_bands
+      - atr_14
+      - roc_6
+      - adx_14
+      - tick_volume_roc_3
+      - tick_volume_zscore_20
+      - close_location_value
+      - directional_volume_proxy_zscore_20
+      - mfi_14
+
+  price_action:
+    enabled: true
+    features:
+      - body_pips
+      - upper_wick_pips
+      - lower_wick_pips
+      - range_pips
+      - body_over_range
+      - close_location_in_bar
+      - range_over_atr
+      - body_over_atr
+      - break_above_prev_high
+      - break_below_prev_low
+      - break_above_recent_high_3
+      - break_below_recent_low_3
+      - break_above_recent_high_6
+      - break_below_recent_low_6
+      - breakout_margin_high_3_pips
+      - breakout_margin_low_3_pips
+      - breakout_margin_high_6_pips
+      - breakout_margin_low_6_pips
+      - higher_high_flag
+      - higher_low_flag
+      - lower_high_flag
+      - lower_low_flag
+      - structure_score_3
+      - structure_score_6
+      - range_vs_avg_6
+      - pullback_from_recent_high_6_over_atr
+      - bounce_from_recent_low_6_over_atr
+      - ema12_26_spread_over_atr
+      - realized_range_3
+      - realized_range_6
+      - hour_sin
+      - hour_cos
+      - session_london
+      - session_newyork
+      - session_overlap
+
+  lag_features:
+    enabled: true
+    columns: ["Close", "Volume"]
+    lags: [1, 2, 3, 5, 10]
+
+unsupervised:
+  enabled: false
+
+models:
+  - name: Momentum
+    enabled: true
+    selection_role: baseline
+    param_grid:
+      lookback: [1]
+
+  - name: ARIMA
+    enabled: false
+    stack_role: primary
+    param_grid:
+      p: [1, 2, 3, 4]
+      d: [0, 1]
+      q: [0, 1]
+
+  - name: Ridge
+    enabled: true
+    stack_role: primary
+    param_grid:
+      alpha: [0.5, 2.0]
+
+  - name: RandomForestRegressor
+    enabled: true
+    stack_role: primary
+    param_grid:
+      n_estimators: [200]
+      max_depth: [4, 6]
+      min_samples_leaf: [5]
+
+  - name: HistGradientBoosting
+    enabled: true
+    stack_role: primary
+    param_grid:
+      learning_rate: [0.05]
+      max_depth: [4, 6]
+      max_iter: [100]
+      min_samples_leaf: [10]
+
+  - name: RandomForestClassifier
+    enabled: true
+    stack_role: filter
+    param_grid:
+      n_estimators: [200]
+      max_depth: [4, 6]
+      min_samples_leaf: [5]
+
+  - name: HistGradientBoostingClassifier
+    enabled: true
+    stack_role: filter
+    param_grid:
+      learning_rate: [0.05]
+      max_depth: [4, 6]
+      max_iter: [150]
+      min_samples_leaf: [10]
+
+  - name: LogisticRegressionClassifier
+    enabled: true
+    stack_role: filter
+    param_grid:
+      C: [1.0]
+      max_iter: [400]
+      class_weight: [null]
+
+  - name: ExtraTreesClassifier
+    enabled: true
+    stack_role: filter
+    param_grid:
+      n_estimators: [200]
+      max_depth: [6]
+      min_samples_leaf: [3]
+
+backtest:
+  enabled: true
+  target_mode: "return_regression"
+  target: "ReturnFwd_2"
+  filter_target: "BarrierReturn_4p_4b"
+  barrier_pips: 4
+  barrier_horizon_bars: 4
+  barrier_price_col: "Close"
+  barrier_high_col: "High"
+  barrier_low_col: "Low"
+  initial_train: 2000
+  step: 16
+  horizon: 2
+  audit_followthrough_bars: 8
+  pip_size: 0.0001
+  threshold_pips: 2.5
+  plot_scale: "price_target"
+  risk_free: 0.0
+  periods_per_year: 72576
+  metrics:
+    - mae
+    - rmse
+    - hit_rate
+    - dm_stat
+    - dm_pvalue
+    - sharpe
+    - sortino
+    - calmar
+    - max_drawdown
+    - profit_factor
+    - win_rate
+    - payoff_ratio
+    - consistency_ratio
+    - avg_trade_return
+    - n_test_points
+    - n_trades
+
+output:
+  dir: "outputs"
+  save_predictions: false
+  save_models: true
+  save_plots: false
+  formats:
+    - csv
+
+trading:
+  min_pips_signal: 2.5
+  enable_confidence_filter: true
+  min_confidence: 0.48
+  barrier_probability_threshold: 0.52
+  barrier_probability_margin: 0.02
+  signal_confirmation:
+    enabled: false
+  execute_best_model_only: true
+  auto_execute_orders: true
+  allow_multiple_positions: true
+  magic_number: 202360
+  order_comment_prefix: "MarkIII_ContV15"
+  order_deviation_points: 20
+  report_lookback_days: 30
+
+risk:
+  risk_per_trade_pct: 0.01
+  max_total_open_risk_pct: 0.03
+  halt_on_daily_loss: false
+  daily_loss_limit_pct: 0.0
+  daily_loss_measure: "equity"
+  pre_trade_risk_validation: true
+  risk_validation_tolerance_pct: 0.05
+  block_new_entries_without_sl: true
+  sl_mode: "atr"
+  fixed_sl_pips: 2.5
+  atr_sl_multiplier: 1.10
+  atr_sl_min_pips: 3.5
+  atr_sl_max_pips: 10.0
+  tp_rr_ratio: 1.5
+  tp_use_predicted_move: true
+  tp_min_pips: 0.0
+
+execution:
+  mode: "backtest"
+  parallel: false
+  n_jobs: -1
+
+model_selection:
+  primary_metric: directional_balance_score
+  primary_greater_is_better: true
+  secondary_metric: directional_pf_floor
+  secondary_greater_is_better: true
+  min_trades: 20
+  min_test_points: 80
+  publish_requires_candidate_thresholds: true

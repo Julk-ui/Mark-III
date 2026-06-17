@@ -262,6 +262,7 @@ class ArimaModel(BaseModel):
         self,
         X_all: pd.DataFrame | None = None,
         y_all: pd.Series | None = None,
+        X_live: pd.DataFrame | None = None,
     ) -> list[float]:
         """
         Reajusta el híbrido ARIMA + Ridge con la serie más reciente disponible.
@@ -277,7 +278,8 @@ class ArimaModel(BaseModel):
             pred = model_fit.forecast(steps=1)
             pred_value = float(pred.iloc[0] if hasattr(pred, "iloc") else pred[0])
 
-            X_last = self._prepare_feature_frame(pd.DataFrame(X_all).tail(1), fit_mode=False)
+            live_frame = X_live if X_live is not None else X_all
+            X_last = self._prepare_feature_frame(pd.DataFrame(live_frame).tail(1), fit_mode=False)
             if residual_model is not None and not X_last.empty:
                 pred_value += float(residual_model.predict(X_last)[0])
 

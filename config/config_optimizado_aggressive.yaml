@@ -7,13 +7,13 @@ strategy_profile:
   name: aggressive
 validation:
   mode: last_n
-  n: 400
+  n: 250
   test_size: 0.2
 data:
   symbol: EURUSD
   timeframe: M5
-  n_bars: 8000
-  use_cache: false
+  n_bars: 6000
+  use_cache: true
   cache_expiry_hours: 1
   pip_size: 0.0001
   additional_symbols:
@@ -65,6 +65,11 @@ features:
     - macd
     - bollinger_bands
     - atr_14
+    - roc_6
+    - tick_volume_roc_3
+    - tick_volume_zscore_20
+    - mfi_14
+    - adx_14
   lag_features:
     enabled: true
     columns:
@@ -86,6 +91,7 @@ models:
   enabled: true
   params:
     lookback: 1.0
+  selection_role: baseline
   is_best: false
 - name: ARIMA
   enabled: true
@@ -93,6 +99,7 @@ models:
     d: 1.0
     p: 1.0
     q: 0.0
+  selection_role: candidate
   is_best: false
 - name: PROPHET
   enabled: true
@@ -104,26 +111,29 @@ models:
     use_lagged_regressors: true
     weekly_seasonality: true
     yearly_seasonality: false
+  selection_role: candidate
   is_best: false
 - name: RandomForestRegressor
   enabled: true
   params:
-    max_depth: 6.0
+    max_depth: 4.0
     min_samples_leaf: 10.0
     n_estimators: 100.0
-  is_best: false
+  selection_role: candidate
+  is_best: true
 - name: HistGradientBoosting
   enabled: true
   params:
     max_depth: 6.0
     min_samples_leaf: 10.0
-    learning_rate: 0.05
+    learning_rate: 0.03
     max_iter: 100.0
-  is_best: true
+  selection_role: candidate
+  is_best: false
 backtest:
   enabled: true
-  initial_train: 1800
-  step: 10
+  initial_train: 1500
+  step: 15
   horizon: 1
   target: ReturnFwd_1
   pip_size: 0.0001
@@ -160,6 +170,18 @@ trading:
   min_pips_signal: 3.0
   enable_confidence_filter: true
   min_confidence: 0.55
+  signal_confirmation:
+    enabled: false
+    require_momentum_alignment: true
+    momentum_column: ROC_6
+    momentum_buy_min: 0.0
+    momentum_sell_max: 0.0
+    require_volume_confirmation: false
+    volume_column: TickVolume_ZScore_20
+    volume_min_strength: 0.0
+    require_regime_confirmation: false
+    regime_column: ADX_14
+    regime_min_strength: 20.0
   execute_best_model_only: true
   auto_execute_orders: true
   allow_multiple_positions: true

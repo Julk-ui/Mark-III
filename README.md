@@ -23,6 +23,55 @@ Mark III busca un flujo continuo:
 6. usar esa release en produccion para generar senales y, si esta habilitado, ejecutar ordenes en MT5
 7. mantener reportes de senales, ciclo de vida y cierres
 
+### 1.1 Explicacion simple para no expertos
+
+Si nunca has trabajado con un robot de trading, piensa en Mark III como un sistema con 5 decisiones seguidas:
+
+1. **Elegir una tesis**
+- decide si en ese momento la idea es `BUY`, `SELL` o `HOLD`
+- eso sale del modelo principal y del filtro del bundle
+
+2. **Decidir si la entrada vale la pena**
+- aunque la direccion pueda ser correcta, el robot revisa si el punto de entrada es malo
+- por ejemplo: entrar demasiado arriba en una compra, demasiado abajo en una venta, o sobre una mecha de rechazo
+
+3. **Elegir como entrar**
+- puede entrar de una vez a mercado
+- puede dividir la entrada en una parte inmediata y otra pendiente
+- puede esperar un mejor retroceso antes de ejecutar
+- puede no entrar si el punto se volvio malo
+
+4. **Gestionar la posicion si ya entro**
+- mueve el `SL` a `break-even`
+- hace parciales antes del `TP`
+- cierra antes si detecta debilidad, reversal o una senal fuerte opuesta
+
+5. **Medir si se esta degradando**
+- el scheduler vigila el rendimiento reciente
+- si un perfil entra en drift, deja trazas para recomendar nuevo backtest o nueva release
+
+En lenguaje simple:
+
+- `backtest` busca que combinacion de reglas y modelos sirve mejor con historico
+- `release` es la configuracion publicada que quedo aprobada para operar
+- `production` genera la idea de trade
+- `sync_trades` gestiona lo que ya esta abierto
+- `monitor_runtime` protege cuando el mercado cambia rapido
+
+### 1.2 Que significa que una senal no abra una orden
+
+No toda fila `BUY` o `SELL` termina en una orden real.
+
+Puede pasar una de estas cosas:
+
+- la tesis existe, pero la entrada se degrada a `retrace_only`
+- la idea queda `staged`, esperando mejor precio
+- `M1` no confirma el timing y la candidata sigue viva sin ejecutar
+- el sistema detecta que la idea es valida, pero el punto ya no lo es
+- el lote calculado queda demasiado pequeno y la pierna no puede abrirse
+
+Eso no siempre es un error. Muchas veces significa que la direccion era razonable, pero el robot decidio no perseguir precio.
+
 ## 2. Estructura del repositorio
 
 ```text
@@ -190,6 +239,13 @@ Idea practica:
 - cada perfil publica su propia release activa
 - produccion puede correr uno, varios o todos los perfiles ya publicados
 - los alias `config_optimizado_<profile>.yaml` y `active_release_<profile>.json` se crean solo cuando ese perfil publica su primera release exitosa
+
+Ejemplo importante:
+
+- si corres un backtest de `aggressive` y luego uno de `balanced_medium`, no se pisan
+- `aggressive` actualiza `active_release_aggressive.json`
+- `balanced_medium` publica sobre el perfil canonico `balanced`, asi que actualiza `active_release_balanced.json`
+- si luego el scheduler opera ambos perfiles, `aggressive` usa su propia release activa y `balanced` usa la suya
 
 ### Familias de perfiles
 
@@ -772,9 +828,17 @@ Que hace:
 9. si `auto_execute_orders: true`, envia la orden a MT5
 10. actualiza los reportes de trades
 
+Notas operativas nuevas:
+
+- una fila de `production` ya no implica siempre una orden inmediata
+- la seÃ±al puede quedar retenida como candidata staged para esperar retroceso de la vela
+- `production` puede crear o actualizar candidatas en `staged_signal_report.csv`
+- `sync_trades` no activa candidatas staged; solo gestiona posiciones ya abiertas
+
 Archivos de salida:
 
 - `outputs/production/production_signals.csv`
+- `outputs/production/staged_signal_report.csv`
 - `outputs/production/trade_lifecycle_report.csv`
 - `outputs/production/closed_trades_report.csv`
 - `outputs/production/daily_trade_report.csv`
@@ -879,6 +943,9 @@ El sistema ahora soporta estos indicadores adicionales:
 - `ROC_6`
 - `TickVolume_ROC_3`
 - `TickVolume_ZScore_20`
+- `CloseLocationValue`
+- `DirectionalVolumeProxy`
+- `DirectionalVolumeProxy_ZScore_20`
 - `MFI_14`
 - `ADX_14`
 
@@ -886,47 +953,147 @@ Puntos a tener en cuenta:
 
 - `ROC_6` es momentum explicito y es el filtro mas util para una primera confirmacion
 - `TickVolume_*` usa tick volume de MT5, no volumen centralizado de mercado
+- `DirectionalVolumeProxy*` es un proxy direccional construido con tick volume y la posicion del cierre dentro del rango de la vela; no equivale a order flow real
 - `MFI_14` mezcla precio y volumen para medir presion compradora/vendedora
 - `ADX_14` sirve mas como filtro de regimen que como gatillo de entrada
 - ninguno de estos filtros queda forzado por defecto
 
 ### Que hace cada modelo de backtesting
 
+Antes de ver modelos concretos, hay dos modos de aprendizaje distintos en el proyecto:
+
+#### `return_regression`
+
+El objetivo tipico es algo como:
+
+- `ReturnFwd_1`
+- `ReturnFwd_2`
+- `ReturnFwd_n`
+
+Interpretacion:
+
+- el modelo no predice el precio exacto futuro
+- predice un retorno futuro `close-to-close`
+- luego el pipeline convierte ese retorno a pips
+- con eso decide `BUY`, `SELL` o `HOLD`
+
+#### `barrier_event`
+
+El objetivo responde a una pregunta operativa:
+
+- en las proximas `N` velas, toca primero `+X` pips o `-X` pips
+
+Interpretacion:
+
+- el modelo no predice un retorno continuo
+- predice probabilidades de evento
+- el pipeline construye la senal desde `prob_up`, `prob_hold` y `prob_down`
+
+### Modelos de `return_regression`
+
+| Modelo | Usa como entrada | Que predice | Cuando conviene |
+| --- | --- | --- | --- |
+| `Momentum` | Solo historial reciente del target `y_train` | Promedio de los ultimos targets observados | Como `baseline` rapido y fuerte para verificar si un modelo complejo realmente agrega valor |
+| `RandomWalk` | Historial muy simple del target | Referencia trivial de persistencia o cambio nulo segun implementacion | Solo como referencia minima |
+| `ARIMA` | La serie temporal del target y, en este proyecto, una capa de residuos con features tabulares | Retorno futuro continuo | Cuando hay dependencia temporal lineal de corto plazo y se quiere una senal mas reactiva que Prophet |
+| `PROPHET` | Serie temporal del target y regresores laggeados opcionales | Retorno futuro continuo, normalmente suave | Cuando hay tendencia o estacionalidad mas estable; en intradia `M5` suele quedar demasiado amortiguado |
+| `Ridge` | Features tabulares del instante `t` | Retorno futuro continuo | Baseline lineal robusta y barata para medir si los modelos complejos realmente agregan no linealidad util |
+| `RandomForestRegressor` | Features tabulares: retornos, lags, indicadores, volumen | Retorno futuro continuo | Cuando se quiere capturar no linealidades e interacciones entre indicadores |
+| `HistGradientBoostingRegressor` | Features tabulares | Retorno futuro continuo | Uno de los mejores compromisos CPU/calidad para tabular financiero |
+| `LSTM` | Secuencias de observaciones, no solo una fila tabular | Retorno futuro continuo | Solo si se justifica el costo; suele ser mas pesado y fragil que los arboles en CPU |
+
+### Modelos de `barrier_event`
+
+| Modelo | Usa como entrada | Que predice | Cuando conviene |
+| --- | --- | --- | --- |
+| `LogisticRegressionClassifier` | Features tabulares del instante `t` | `prob_up`, `prob_hold`, `prob_down` | Como baseline probabilistico serio y muy barato |
+| `RandomForestClassifier` | Features tabulares | Probabilidades por clase de evento | Cuando hay relaciones no lineales, pero sin costo excesivo |
+| `ExtraTreesClassifier` | Features tabulares | Probabilidades por clase de evento | Variante muy barata y agresiva frente a `RandomForestClassifier`, util para explorar diversidad sin gran costo |
+| `HistGradientBoostingClassifier` | Features tabulares | Probabilidades por clase de evento | Candidato principal cuando se busca equilibrio entre tiempo y calidad |
+
+### Lectura cuantitativa rapida de cada familia
+
 `Momentum`
 
-- modelo simple de continuidad o sesgo de muy corto plazo
-- sirve como baseline rapido
-- util para detectar si una estrategia compleja realmente mejora algo
+- no usa indicadores complejos
+- usa solo el comportamiento reciente del target
+- por eso puede salir sorprendentemente fuerte
+- en este proyecto debe tratarse como `baseline`, no como campeon final por defecto
 
 `ARIMA`
 
-- modelo lineal autoregresivo con integracion y media movil
-- intenta capturar estructura temporal lineal
-- suele ser mas lento y sensible a la configuracion
+- modela estructura temporal lineal inmediata
+- en esta implementacion puede apoyarse en residuos con features
+- suele ser el modelo temporal clasico mas util en intradia corto
+- si gana muy justo y con pocos trades, la ventaja puede no ser robusta
 
 `PROPHET`
 
-- modelo aditivo de tendencia y estacionalidad
-- puede ser util si la serie tiene componentes suaves o repetitivos
-- en intradia corto no siempre domina frente a modelos de arboles
+- si predice, pero suele hacerlo con amplitud pequena
+- en `M5 + ReturnFwd_1` muchas veces genera valores demasiado cercanos a cero
+- eso produce muchos `HOLD`, no porque falle el modelo, sino porque no cruza el umbral operativo
+- suele tener mas sentido en horizontes mas suaves o mas largos
 
 `RandomForestRegressor`
 
-- ensamble de arboles que captura no linealidades
-- robusto con features tecnicas y lags
-- normalmente mas interpretable operacionalmente que una red profunda
+- divide el espacio de features con reglas no lineales
+- robusto y razonable en CPU
+- muchas veces predice valores amortiguados cerca de cero si el target es muy ruidoso
 
-`HistGradientBoosting`
+`HistGradientBoostingRegressor`
 
-- boosting de arboles, rapido y potente con features tabulares
-- suele ser uno de los mejores compromisos entre calidad y tiempo de entrenamiento
-- en este proyecto ha sido una familia fuerte en varias corridas
+- corrige errores de arboles previos de forma secuencial
+- suele superar a `RandomForestRegressor` en tabular corto
+- es una de las mejores opciones cuando no se quiere usar redes
 
-`LSTM`
+`LogisticRegressionClassifier`
 
-- red recurrente para secuencias
-- puede modelar dependencias temporales complejas
-- tiene mayor costo computacional y mayor sensibilidad a ruido, por eso suele dejarse desactivado al inicio
+- aprende fronteras lineales entre `up`, `hold` y `down`
+- es muy barata y facil de interpretar
+- si queda en `0` trades, normalmente significa que el problema es demasiado no lineal o que el target esta desbalanceado
+
+`RandomForestClassifier`
+
+- ensamble de arboles de clasificacion
+- puede rescatar no linealidades sin disparar el costo
+- aun asi puede sesgarse demasiado a `hold` si el target esta mal calibrado
+
+`ExtraTreesClassifier`
+
+- similar a `RandomForestClassifier`, pero con mayor aleatoriedad en los cortes
+- muy barato en CPU
+- util para comprobar si un poco mas de diversidad mejora cobertura o estabilidad
+- no siempre gana, pero suele ser una buena familia adicional para experimentar
+
+`HistGradientBoostingClassifier`
+
+- hoy es la familia mas fuerte del modo `barrier_event`
+- suele producir la mejor senal entre clasificadores tabulares en CPU
+- es la opcion mas balanceada para este proyecto si se quiere una senal operativa interpretable
+
+### Como interpretar una prediccion en produccion
+
+En `return_regression`:
+
+- el modelo produce `y_pred`
+- `y_pred` representa un retorno futuro
+- el pipeline lo convierte a `predicted_pips`
+- luego aplica filtro de `pips`, confianza y confirmacion
+
+En `barrier_event`:
+
+- el modelo produce `prob_up`, `prob_hold`, `prob_down`
+- el pipeline decide la senal segun umbral probabilistico y margen entre clases
+- ademas calcula `expected_move_pips` y niveles objetivo de `TP` y `SL` de la senal
+
+### Recomendacion practica para este proyecto
+
+- `Momentum`: baseline
+- `ARIMA`: mejor modelo temporal clasico de corto plazo
+- `PROPHET`: util solo si el horizonte o la estructura temporal le favorecen
+- `HistGradientBoostingRegressor`: mejor regresor tabular generalista
+- `HistGradientBoostingClassifier`: mejor candidato actual para el enfoque de barrera
+- `LSTM`: dejarla fuera al inicio salvo que haya una razon fuerte para asumir ese costo
 
 ### Puntos criticos de consistencia
 
@@ -934,6 +1101,7 @@ Puntos a tener en cuenta:
 - si agregas nuevos indicadores y quieres que el modelo aprenda de ellos, debes correr un backtest nuevo; no basta con tocar el YAML de produccion
 - los filtros de confirmacion pueden mejorar calidad, pero tambien reducir mucho `n_trades`; no los actives todos a la vez sin medir impacto
 - en Forex via MT5, `Volume` es normalmente tick volume, no volumen consolidado de mercado
+- si ningun modelo candidato cumple los minimos de `model_selection`, el pipeline ya no deberia publicar una nueva release activa por fallback
 
 ## 7.3 Seleccion del mejor modelo
 
@@ -947,6 +1115,7 @@ model_selection:
   secondary_greater_is_better: true
   min_trades: 5
   min_test_points: 40
+  publish_requires_candidate_thresholds: true
 ```
 
 La logica actual:
@@ -954,6 +1123,7 @@ La logica actual:
 - elige el mejor run por modelo con `primary_metric` y `secondary_metric`
 - luego elige el campeon global con la misma logica
 - marca un solo modelo con `is_best: true`
+- si `publish_requires_candidate_thresholds: true` y ningun candidato cumple `min_trades` y `min_test_points`, no publica una nueva `active_release_<profile>.json`
 
 ## 7.4 Metricas del backtest
 
@@ -1107,6 +1277,152 @@ Puntos importantes:
 - el lote depende del riesgo monetario y de la distancia al `SL`
 - el sistema ya descuenta el riesgo abierto antes de asignar un nuevo lote
 
+### Entradas escalonadas y staging
+
+La apertura en produccion ya no es solo "senal valida -> orden inmediata". Ahora existen dos capas:
+
+- `entry_management`
+- `entry_staging`
+
+`entry_management` divide una entrada ya autorizada en:
+
+- una pierna `market`
+- una pierna `limit` de mejora
+
+Configuracion tipica:
+
+```yaml
+entry_management:
+  enabled: true
+  mode: split_retrace_limit
+  initial_market_fraction: 0.5
+  pending_fraction: 0.5
+  retrace_fraction_of_stop: 0.55
+  cancel_pending_after_bars: 2
+  disable_pending_when_filter_hold: true
+```
+
+Semantica:
+
+- la `limit` se coloca a una fraccion del camino entre la entrada y el `SL`
+- la `limit` calcula su propio `SL` y `TP` desde su propio precio de entrada
+- si `disable_pending_when_filter_hold: true`, una senal con `filter_signal = HOLD` entra sin segunda pierna `limit`
+
+Lectura simple:
+
+- `market`: la parte que entra ya
+- `pending_limit`: la parte que espera mejor precio en MT5
+- `staged`: idea retenida internamente; todavia no es una orden real
+- `retrace_only`: la tesis sigue viva, pero el robot solo quiere entrar si el precio mejora
+- `skip`: la idea se descarta
+
+Para una evolucion a varias patas, ver [docs/entry_grid_v1_design.md](docs/entry_grid_v1_design.md). Esa propuesta define una `v1` de `3` patas con riesgo total fijo, cierre de patas peores en positivo y una pata final `runner`.
+
+`entry_staging` retiene senales antes de abrir una orden real:
+
+```yaml
+entry_staging:
+  enabled: true
+  mode: candidate_retrace
+  max_stage_bars: 2
+  convert_direct_filter_hold_to_staged: true
+  convert_direct_confirmed_to_staged: true
+  pilot_entry_enabled: true
+  pilot_convert_to_staged: true
+```
+
+En `tp5` esto significa:
+
+- las senales directas confirmadas ya no entran necesariamente al cierre de la vela
+- las senales con `filter_signal = HOLD` se retienen para esperar un mejor retroceso
+- las `pilot` tambien se convierten a staging en vez de entrar `market_only`
+
+Para estas activaciones staged:
+
+- el trigger se calcula desde el retroceso de la vela de senal
+- el `SL` puede anclarse al extremo de la vela de senal
+- se puede usar buffer por pips y por `ATR`
+- `dynamic_stop_min_pips` fuerza un stop minimo aunque la vela sea demasiado pequena
+
+Importante para leer el live:
+
+- una candidata `staged` puede existir sin que veas ninguna orden pendiente en MT5
+- eso es correcto cuando la idea sigue en observacion y el robot todavia no quiere enviar una `BUY_LIMIT` o `SELL_LIMIT`
+- cuando el flujo dice `market + pending`, la pierna pendiente ya deberia verse como orden real
+
+### Volumen direccional en activacion staged
+
+El perfil `aggressive_hybrid_v1_3_tp5_sl3` puede exigir que una candidata staged solo se active si el volumen acompana el lado del trade.
+
+Configuracion:
+
+```yaml
+entry_staging:
+  require_directional_volume_activation: true
+  directional_volume_column: "DirectionalVolumeProxy_ZScore_20"
+  directional_volume_buy_min: 0.1
+  directional_volume_sell_max: -0.1
+```
+
+Interpretacion:
+
+- `BUY` staged: el proxy direccional debe ser suficientemente positivo
+- `SELL` staged: el proxy direccional debe ser suficientemente negativo
+- si el precio llega al trigger pero el volumen no acompana, la candidata sigue viva como `WAITING_VOLUME_CONFIRMATION`
+
+### Control contextual y calidad de entrada
+
+La capa de ejecucion ya no depende solo de la direccion del modelo. Antes de decidir si entra `market`, `retrace_only` o `skip`, el pipeline evalua:
+
+- contradiccion suave o dura del contexto (`CloseLocationValue`, `DirectionalVolumeProxy_ZScore_20`, cuerpo de vela)
+- si la entrada inmediata queda demasiado arriba para `BUY` o demasiado abajo para `SELL`
+- si la vela ya muestra rechazo contrario
+- si el precio esta estirado frente a `EMA_20` o `SessionVWAP`
+- si hay alineacion estructural minima con:
+  - `ROC_3`
+  - `ROC_6`
+  - pendiente de `EMA_20`
+  - pendiente de `SessionVWAP`
+  - ruptura reciente (`BreakAboveRecentHigh3` / `BreakBelowRecentLow3`)
+
+Features nuevas de ejecucion:
+
+- `EMA_20`
+- `EMA20SlopePips`
+- `SessionVWAP`
+- `SessionVWAPSlopePips`
+- `SignedDistanceToEMA20Pips`
+- `SignedDistanceToVWAPPips`
+- `EMA20StretchVsAvgRange`
+- `VWAPStretchVsAvgRange`
+
+Campos nuevos que quedan publicados en `production_signals.csv`:
+
+- `entry_context_quality_score`
+- `entry_context_quality_decision`
+- `entry_context_quality_alignment_hits`
+- `entry_context_quality_alignment_total`
+- `entry_context_quality_signed_distance_to_ema20_pips`
+- `entry_context_quality_signed_distance_to_vwap_pips`
+- `entry_context_quality_ema20_stretch_vs_avg_range`
+- `entry_context_quality_vwap_stretch_vs_avg_range`
+- `entry_context_quality_range_vs_avg_value`
+- `entry_context_quality_stretched_from_ema20`
+- `entry_context_quality_stretched_from_vwap`
+- `entry_context_quality_stretched_entry`
+
+Semantica operativa:
+
+- `entry_quality_score >= entry_quality_min_score_for_market`: puede mantener `market` o `split_retrace_limit`
+- `entry_quality_min_score_for_retrace <= score < entry_quality_min_score_for_market`: fuerza `entry_quality_retrace_only`
+- `score < entry_quality_min_score_for_retrace`: bloquea la idea con `entry_quality_low_skip`
+
+En la practica:
+
+- la direccion puede seguir siendo correcta aunque el punto de entrada sea malo
+- si el punto es malo, el sistema ya no deberia perseguir precio por defecto
+- el score de entrada convive con `context_guard`, `entry_staging`, `cluster_guard` y el filtro del bundle
+
 ## 8.4 Reportes de produccion
 
 ### `production_signals.csv`
@@ -1128,7 +1444,40 @@ Contiene, entre otros:
 - live_sl_price
 - live_tp_price
 - volume_lots
+- staged_candidate_id
+- staged_status
+- staged_action
+- staged_reason
+- staged_trigger_price
+- staged_expires_at
+- staged_activation_reason
+- staged_directional_volume_column
+- staged_directional_volume_value
+- staged_directional_volume_passed
+- staged_directional_volume_reason
 - metricas historicas del modelo en backtest
+
+### `staged_signal_report.csv`
+
+Registro de candidatas retenidas antes de abrir una orden real.
+
+Campos importantes:
+
+- `candidate_id`
+- `candidate_mode`
+- `side`
+- `reference_price`
+- `trigger_price`
+- `custom_stop_price`
+- `candidate_volume_scale`
+- `expires_at`
+- `status`
+- `status_reason`
+- `activation_reason`
+- `last_directional_volume_column`
+- `last_directional_volume_value`
+- `last_directional_volume_passed`
+- `last_directional_volume_reason`
 
 ### Chequeo rapido de salud operativa
 
@@ -1150,6 +1499,13 @@ Para confirmar que produccion esta sana, revisa primero estos 3 campos en cada n
 - si hay `BUY` o `SELL`, deberias ver `volume_lots > 0` y niveles `live_sl_price` / `live_tp_price` validos
 - si `volume_lots = 0`, la señal fue bloqueada por riesgo disponible, lote minimo o validaciones previas a la orden
 - si los niveles `live_*` estan vacios, la señal no quedo lista para ejecucion real
+
+4. `staged_status`, `staged_action`
+
+- `ACTIVE` + `WAITING` = existe candidata, pero aun no llego al trigger
+- `ACTIVE` + `WAITING_VOLUME_CONFIRMATION` = el precio ya estaba en zona, pero el volumen direccional no acompano
+- `ACTIVATED` = la candidata ya se convirtio en trade real
+- `CANCELLED` = vencio, fue contradicha o aparecio una senal opuesta
 
 Lectura rapida:
 
@@ -1219,6 +1575,12 @@ Puede lanzar estos jobs:
 - `production`
 - `sync_trades`
 
+Importante:
+
+- `production` puede dejar una fila `HOLD` y aun asi crear una candidata activa en `staged_signal_report.csv`
+- `sync_trades` no activa candidatas staged; solo gestiona posiciones ya abiertas
+- la activacion o cancelacion de candidatas staged ocurre dentro del siguiente ciclo de `production`
+
 ## 9.2 Como decide que config usar
 
 El scheduler toma como base el YAML pasado en `--config`.
@@ -1240,6 +1602,12 @@ Si el job de `production` corre con perfil, intenta usar en este orden:
 1. `active_release_<profile>.json`
 2. `config/config_optimizado_<profile>.yaml`
 3. fallback a la release por defecto si no existe release perfilada
+
+Interpretacion practica:
+
+- no existe una sola "ultima release global" cuando operas por perfil
+- cada perfil mantiene su propio puntero a la ultima release valida
+- por eso `aggressive`, `balanced` y `conservative` pueden convivir con releases distintas al mismo tiempo
 
 ### Produccion multi-perfil
 
@@ -1264,6 +1632,15 @@ Interpretacion:
 - el scheduler lanza un job de `production` por cada perfil
 - cada job usa su propia release activa
 - `production_profile_spacing_seconds` separa los arranques para que no choquen entre si
+
+Ejemplo concreto:
+
+- `aggressive` puede estar usando la release `20260501_075630`
+- `balanced` puede estar usando la release `20260506_051115`
+- si `production_profiles` contiene ambos, el mismo scheduler lanzara dos jobs:
+  - uno para `aggressive` con `active_release_aggressive.json`
+  - otro para `balanced` con `active_release_balanced.json`
+- no se mezclan modelos ni configs entre perfiles
 
 ## 9.3 Locks y paralelismo
 
@@ -1626,6 +2003,22 @@ Uso:
 - operar con releases canonicas publicadas por los YAML `medium`
 - reemplazar el scheduler `light` cuando un perfil serio ya tiene campeon confiable
 - empezar normalmente con `balanced` y luego agregar `aggressive` o `conservative`
+
+Si quieres operar `aggressive + balanced` a la vez, deja en `config/config_scheduler_runtime_profiles_medium.yaml`:
+
+```yaml
+scheduler:
+  production_profiles:
+    - aggressive
+    - balanced
+  sync_trades_profile: balanced
+```
+
+Con esa configuracion:
+
+- `aggressive` tomara la release apuntada por `config/active_release_aggressive.json`
+- `balanced` tomara la release apuntada por `config/active_release_balanced.json`
+- `sync_trades` seguira usando `balanced` como perfil base de reconciliacion
 
 ## Scheduler con disparo inmediato
 
@@ -2185,3 +2578,665 @@ Revisa:
 - deja `config/config_optimizado.yaml` como archivo derivado de produccion
 - no edites manualmente `active_release.json`
 - si quieres operar en vivo, valida primero el flujo completo con `auto_execute_orders: false`
+
+## 17. Target de barrera y perfiles nuevos
+
+Ahora existe un modo adicional de aprendizaje:
+
+- `backtest.target_mode: barrier_event`
+
+Ese modo deja de predecir retorno `close-to-close` como objetivo principal y pasa a responder:
+
+- si en las proximas `N` velas toca primero `+X` pips o `-X` pips
+
+Columnas nuevas que puede generar el pipeline:
+
+- `BarrierDir_<Xp>_<Nb>`
+- `BarrierReturn_<Xp>_<Nb>`
+- `BarrierMovePips_<Xp>_<Nb>`
+- `BarrierBarsToTouch_<Xp>_<Nb>`
+- `BarrierAmbiguous_<Xp>_<Nb>`
+- `MFEPips_<Xp>_<Nb>`
+- `MAEPips_<Xp>_<Nb>`
+
+Perfiles de barrera agregados:
+
+- `config/config_profile_aggressive_barrier.yaml`
+- `config/config_profile_aggressive_barrier_v2.yaml`
+- `config/config_profile_aggressive_barrier_v3.yaml`
+- `config/config_profile_aggressive_barrier_v4.yaml`
+- `config/config_profile_balanced_barrier.yaml`
+
+Comandos:
+
+```powershell
+python main_pipeline.py --mode backtest --config config/config_profile_aggressive_barrier.yaml
+python main_pipeline.py --mode backtest --config config/config_profile_aggressive_barrier_v2.yaml
+python main_pipeline.py --mode backtest --config config/config_profile_aggressive_barrier_v3.yaml
+python main_pipeline.py --mode backtest --config config/config_profile_aggressive_barrier_v4.yaml
+python main_pipeline.py --mode backtest --config config/config_profile_balanced_barrier.yaml
+```
+
+`aggressive_barrier_v3` mantiene la estructura de `v2` y anade `ExtraTreesClassifier` al torneo de modelos de barrera sin pisar la release activa de `aggressive_barrier_v2`.
+
+`aggressive_barrier_v4` anade features de microestructura / price action, suaviza ligeramente los umbrales de probabilidad (`0.52 / 0.03 / 0.52`) y da mas profundidad a `RandomForestClassifier` / `ExtraTreesClassifier` para intentar que participen realmente en el torneo sin disparar demasiado el costo computacional.
+
+## 18. Auditoria visual de trades en backtest
+
+El mejor run de cada modelo ahora puede generar una auditoria visual adicional, pensada para revisar:
+
+- entrada
+- `TP` objetivo de la senal
+- `SL` objetivo de la senal
+- salida real
+- si el trade termino en `WIN`, `LOSS`, `TIMEOUT` o `AMBIGUOUS`
+
+Archivos nuevos del backtest:
+
+- `outputs/backtest/<Modelo>_<params>_trade_audit.csv`
+- `outputs/backtest/<Modelo>_<params>_trade_audit_summary.csv`
+- `outputs/backtest/<Modelo>_<params>_monthly_stability.csv`
+- `outputs/backtest/plots/<Modelo>_<params>_trade_audit.png`
+
+El grafico `trade_audit.png` muestra en una linea:
+
+- precio real
+- punto de entrada
+- `TP` y `SL` objetivo de la senal
+- punto de salida
+
+## 19. Perfiles dedicados a ARIMA y PROPHET
+
+Tambien existen perfiles de costo contenido para comparar `ARIMA` y `PROPHET` sin mezclar el resto del stack:
+
+- `config/config_profile_aggressive_arima_prophet_v1.yaml`
+- `config/config_profile_balanced_arima_prophet_v1.yaml`
+
+Comandos:
+
+```powershell
+python main_pipeline.py --mode backtest --config config/config_profile_aggressive_arima_prophet_v1.yaml
+python main_pipeline.py --mode backtest --config config/config_profile_balanced_arima_prophet_v1.yaml
+```
+
+Estos perfiles:
+
+- dejan `Momentum` como `baseline`
+- compiten solo `ARIMA` y `PROPHET`
+- publican release activa propia por perfil
+- generan tambien auditoria visual de trades
+
+## 20. Scheduler para `aggressive_barrier_v2`
+
+Existe un scheduler dedicado a la release activa del perfil `aggressive_barrier_v2`:
+
+- `config/config_scheduler_runtime_profiles_barrier_v2.yaml`
+
+Comando:
+
+```powershell
+python scheduler_automation.py --config config/config_scheduler_runtime_profiles_barrier_v2.yaml
+```
+
+Disparo inmediato:
+
+```powershell
+python scheduler_automation.py --config config/config_scheduler_runtime_profiles_barrier_v2.yaml --run-production-now --run-sync-now
+```
+
+Ese scheduler resuelve automaticamente la ultima release activa de:
+
+- `active_release_aggressive_barrier_v2.json`
+
+## 21. Gestion de posiciones abiertas en `sync_trades`
+
+`sync_trades` ya no solo reconcilia cierres y protecciones. Ahora aplica tres capas:
+
+- gestion progresiva por avance hacia `TP`
+- proteccion y salida contextual desde `runtime_monitor`
+- cierres condicionados por senal opuesta del mismo perfil
+
+### 21.1 Gestion progresiva tipo grilla
+
+Configuracion actual por perfil live:
+
+- perfil viejo `aggressive_hybrid_v1_3_tp5_sl3`
+  - empieza a gestionar desde `20%` del camino al `TP`
+  - descarga cada `5%`
+  - cierra `15%` del volumen remanente por etapa
+  - mueve `SL` a `break-even` desde `20%`
+  - puede ejecutar hasta `4` acciones por ciclo
+
+- perfil nuevo `aggressive_hybrid_v1_6_m15_signal_exec_m5_fast`
+  - empieza a gestionar desde `20%` del camino al `TP`
+  - descarga cada `5%`
+  - cierra `25%` del volumen remanente por etapa
+  - mueve `SL` a `break-even` desde `20%`
+  - puede ejecutar hasta `4` acciones por ciclo
+
+Regla adicional importante:
+
+- si el trade ya supera `95%` del camino al `TP`
+- y el parcial siguiente quedaria por debajo del `lot_step` minimo del broker
+- el sistema cierra el remanente completo en vez de dejar una cola muy pequena viva
+
+Semantica:
+
+- el avance se mide como porcentaje del recorrido hacia el `TP`
+- cuanto antes llega a verde, antes empieza a proteger
+- los lotes pequenos pueden no permitir parciales finos; por eso existe el cierre total cerca del `TP`
+- esta capa busca cobrar antes, no esperar siempre el `TP` completo
+
+Todavia se conservan y se registran tambien los nombres clasicos de etapas, por ejemplo:
+
+- `progress_50_close_30`
+- `progress_70_close_50`
+- `progress_85_close_80`
+- `grid_progress_30_close_10`
+- `grid_progress_35_close_10`
+
+### 21.2 Runtime monitor: proteccion y cierres contextuales
+
+`runtime_monitor` ahora vigila, entre otros:
+
+- `reversal`
+- `lateralization`
+- `no_followthrough`
+- `compact_oscillation`
+- `shock_reversal`
+- senal opuesta del mismo perfil
+
+Comportamiento importante:
+
+- si detecta debilidad y la posicion ya esta protegible, puede mover a `break-even`
+- si la debilidad aparece con progreso suficiente, puede hacer parcial o cierre total
+- `shock_reversal` cierra completo solo si el trade ya esta no negativo; no realiza perdida
+- si aparece una senal fuerte opuesta del mismo perfil, la posicion vieja puede quedar armada como `first-to-exit` y cerrar en cuanto vuelva a `break-even`
+- si una pierna `market` ya va suficientemente bien, la `pending_limit` sobrante puede cancelarse temprano para no seguir apilando riesgo
+
+Regla operativa actual:
+
+- la cancelacion temprana de `pending` por progreso arranca desde `20%` del camino al `TP`
+
+### 21.3 Cierre por senal opuesta
+
+La regla actual es intencionalmente conservadora:
+
+- no cierra por senal opuesta si la posicion sigue en rojo
+- si esta en `break-even` o positiva, puede cerrar completa
+- si todavia no puede cerrar, queda armada para salir en el primer `BE`
+
+Esto evita liquidar contradicciones a perdida solo porque aparecio una tesis nueva.
+
+### 21.4 Campos relevantes en `trade_lifecycle_report.csv`
+
+- `managed_stage_ids`
+- `break_even_applied`
+- `break_even_applied_time`
+- `break_even_sl_price`
+- `last_management_time`
+- `last_management_action`
+- `last_partial_close_volume`
+- `partial_close_total_volume`
+- `remaining_volume_lots_estimate`
+- `management_progress_to_tp`
+- `trade_management_comment`
+- `runtime_monitor_action`
+- `runtime_monitor_reason`
+
+Nota operativa:
+
+- toda esta gestion ocurre dentro de `sync_trades` y `monitor_runtime`
+- no reemplaza la logica de `production`; solo actua despues de que existe una posicion abierta
+- si el lote es demasiado pequeno para un parcial sin violar `volume_min`, la etapa se registra y el parcial se omite
+
+## 22. Stack híbrido `primary + filter`
+
+El pipeline ahora soporta un modo híbrido para que backtest y producción usen la misma lógica final de señal:
+
+- un modelo principal predice dirección y magnitud (`pred_return`, `predicted_pips`)
+- un modelo filtro predice probabilidad operable (`prob_up`, `prob_hold`, `prob_down`)
+- la señal final solo entra si ambos están alineados según las reglas del perfil
+
+Configuración base:
+
+```yaml
+prediction_stack:
+  mode: "hybrid_primary_plus_filter"
+  primary_models: [ARIMA, Ridge, HistGradientBoosting]
+  filter_models: [HistGradientBoostingClassifier, LogisticRegressionClassifier, ExtraTreesClassifier]
+  require_alignment: true
+  top_k_primary_for_bundle_eval: 2
+  top_k_filter_for_bundle_eval: 2
+```
+
+Compuertas soportadas:
+
+- `filter_gate_mode: "full_signal"`
+  El filtro debe convertirse por si mismo en `BUY` o `SELL`.
+- `filter_gate_mode: "direction_support"`
+  El filtro no necesita emitir una señal completa; basta con que apoye la
+  dirección del primario con suficiente probabilidad y margen.
+- `filter_gate_mode: "support_score"`
+  El filtro actúa como veto suave. Se calcula:
+  - `support_score = prob_lado_primario - prob_lado_opuesto`
+  - si el `support_score` supera `support_score_min`, el bundle puede pasar
+  - si el lado opuesto domina por más de `contradiction_margin`, el filtro contradice la idea del primario
+
+En este modo:
+
+- `backtest.target` sigue siendo el target de retorno del modelo principal
+- `backtest.filter_target` define el target de barrera del filtro probabilístico
+- el campeón publicado ya no es solo un modelo, sino un `decision_bundle`
+
+La release optimizada guarda:
+
+- `models`: mejores parámetros por modelo individual
+- `decision_bundle`: pareja ganadora `primary_model + filter_model`
+
+Producción usa ese mismo `decision_bundle` para:
+
+- generar `BUY / SELL / HOLD`
+- conservar `pred_return`, `pips`, `confidence`
+- guardar `prob_up`, `prob_hold`, `prob_down`
+- publicar `signal_target_tp_price` y `signal_target_sl_price`
+
+En la version `tp5` mas reciente, la capa de ejecucion alrededor del bundle funciona asi:
+
+- `filter_signal = HOLD`: la idea puede pasar a `entry_staging` y esperar retroceso de la vela
+- `direct_confirmed`: tambien puede convertirse a staging para evitar entrar justo en el cierre
+- `pilot`: puede retenerse como `pilot_candle_retrace` en vez de entrar a mercado inmediatamente
+- la activacion staged puede exigir volumen direccional compatible antes de abrir la orden
+
+Perfil inicial listo para correr:
+
+- `config/config_profile_aggressive_hybrid_v1.yaml`
+- `config/config_profile_aggressive_hybrid_v1_1.yaml`
+- `config/config_profile_aggressive_hybrid_v1_2.yaml`
+- `config/config_profile_aggressive_hybrid_v1_3_tp4_sl2_5.yaml`
+- `config/config_profile_aggressive_hybrid_v1_3_tp5_sl3.yaml`
+
+Comando:
+
+```powershell
+.\.venv\Scripts\python.exe main_pipeline.py --mode backtest --config config/config_profile_aggressive_hybrid_v1.yaml
+```
+
+Versión menos rígida del filtro:
+
+```powershell
+.\.venv\Scripts\python.exe main_pipeline.py --mode backtest --config config/config_profile_aggressive_hybrid_v1_1.yaml
+```
+
+Versión con `support_score` y filtro de barrera más permisivo:
+
+```powershell
+.\.venv\Scripts\python.exe main_pipeline.py --mode backtest --config config/config_profile_aggressive_hybrid_v1_2.yaml
+```
+
+VersiÃ³n orientada a `TP 4 / SL 2.5` con primario `ReturnFwd_3` y filtro `BarrierReturn_4p_4b`:
+
+```powershell
+.\.venv\Scripts\python.exe main_pipeline.py --mode backtest --config config/config_profile_aggressive_hybrid_v1_3_tp4_sl2_5.yaml
+```
+
+VersiÃ³n orientada a `TP 5 / SL 3` con primario `ReturnFwd_4` y filtro `BarrierReturn_5p_5b`:
+
+```powershell
+.\.venv\Scripts\python.exe main_pipeline.py --mode backtest --config config/config_profile_aggressive_hybrid_v1_3_tp5_sl3.yaml
+```
+
+## 23. Estado operativo actual del live
+
+Esta seccion resume el comportamiento vigente del sistema en produccion para no depender solo de notas dispersas de cambios.
+
+### 23.1 Perfiles live actuales
+
+Perfil viejo principal:
+
+- `aggressive_hybrid_v1_3_tp5_sl3`
+- timeframe operativo: `M5`
+- `magic_number: 202357`
+- `order_comment_prefix: MarkIII_AggH13B`
+- riesgo por trade:
+  - `risk_per_trade_pct: 0.01`
+  - `max_total_open_risk_pct: 0.03`
+
+Perfil nuevo en paralelo:
+
+- `aggressive_hybrid_v1_6_m15_signal_exec_m5_fast`
+- señal en `M15`, ejecucion y reevaluacion frecuente
+- `magic_number: 202364`
+- `order_comment_prefix: MarkIII_M15Sig`
+- riesgo por trade:
+  - `risk_per_trade_pct: 0.0035`
+  - `max_total_open_risk_pct: 0.012`
+
+Scheduler dual recomendado:
+
+- `config/config_scheduler_runtime_profiles_live_vs_m15_signal_exec_m5_fast.yaml`
+
+Comando:
+
+```powershell
+Set-Location "C:\Users\USER\Documentos\Maestria\Mark-III"
+Remove-Item logs\automation_scheduler*.lock -Force -ErrorAction SilentlyContinue
+.\.venv\Scripts\python.exe scheduler_automation.py --config config/config_scheduler_runtime_profiles_live_vs_m15_signal_exec_m5_fast.yaml --run-production-now --run-sync-now --run-monitor-now
+```
+
+### 23.2 Como interpretar el scheduler en multi-perfil
+
+El resumen del scheduler se emite por perfil, no como total global de MT5.
+
+Ejemplo:
+
+- si el viejo reporta `open=2`
+- y el nuevo reporta `open=1`
+- el total visible en MT5 puede ser `3`
+
+Ademas:
+
+- una `pending_limit` ya activada deja de contar como `pending` y pasa a `open`
+- los logs duales deben leerse por perfil y por `magic_number`
+- `production_profile_spacing_seconds` del scheduler dual actual esta en `75` para darle tiempo al perfil `M15`
+
+### 23.3 Logica actual de entrada
+
+La entrada ya no es solo "modelo dice BUY/SELL y se ejecuta".
+
+Traduccion a lenguaje simple:
+
+- primero el sistema decide si la idea general es `BUY`, `SELL` o `HOLD`
+- luego decide si el punto concreto de entrada es bueno o malo
+- despues decide si conviene:
+  - entrar ya
+  - entrar poco y dejar una mejora pendiente
+  - esperar mejor precio
+  - o no entrar
+
+La meta no es ser siempre mas conservador. La meta es evitar dos extremos:
+
+- entrar demasiado pronto por impulso falso
+- entrar demasiado tarde cuando el movimiento ya esta agotado
+
+Capas activas:
+
+1. `decision_bundle`
+- decide direccion y conviccion final (`BUY`, `SELL`, `HOLD`)
+
+2. `entry_staging`
+- puede retener ideas para mejor retroceso
+- convierte varias rutas directas en candidatas staged
+
+3. `entry_management`
+- puede dividir una entrada en `market + limit`
+- o degradarla a `retrace_only`
+
+4. `context_guard + entry_quality_score`
+- decide si el punto de entrada es defendible
+- puede forzar:
+  - `market`
+  - `entry_quality_retrace_only`
+  - `entry_quality_low_skip`
+
+5. `cluster_guard`
+- evita seguir apilando demasiadas piernas del mismo lado cuando el cluster ya avanzo o ya esta cargado
+
+6. `execution_confirmation_m1`
+- la tesis sigue saliendo del timeframe principal del perfil (`M5` en el viejo, `M15` en el nuevo)
+- `M1` no cambia la direccion; solo confirma el timing de ejecucion
+- se usa para dos momentos:
+  - habilitar o frenar una `micro market` cerca del trigger
+  - habilitar o retener la activacion final de una candidata staged
+- si `M1` no acompana, la candidata queda `ACTIVE` y espera nueva confirmacion; no fuerza cancelacion inmediata
+- chequea breakout corto, aceleracion (`ROC_1` y `ROC_3`), alineacion de pendiente (`EMA20` y `VWAP`), ubicacion del cierre, wick contrario y stretch intrabar
+- por diseno esta capa busca afinar la entrada, no endurecer la tesis principal
+
+7. `mature_non_aligned_filter`
+- esta es una proteccion simetrica nueva
+- aplica tanto a `BUY` como a `SELL`
+- si el impulso ya esta `mature` y el filtro no acompana, la idea puede bajar a `retrace_only`
+- no es un veto absoluto: depende de calidad y `dirvol`
+
+### 23.3.1 Como estan balanceados hoy compras y ventas
+
+La intencion actual del sistema es:
+
+- no castigar `BUY` por defecto solo por ser `BUY`
+- no dejar pasar `SELL` maduras malas solo por ser `SELL`
+- evaluar ambos lados con la misma idea:
+  - si el impulso esta naciendo y el punto es defendible, puede entrar
+  - si el impulso ya esta maduro y el filtro no acompana, debe esperar mejor precio
+
+En el perfil viejo:
+
+- `filter_hold_small_market_only` ya no esta sesgado contra `BUY`
+- ahora `BUY` y `SELL` pueden existir en esa ruta
+- pero ambos lados se degradan si el impulso ya viene maduro
+
+En el perfil nuevo:
+
+- ya no hay una proteccion dura solo para `SELL`
+- la proteccion se reemplazo por una regla de "impulso maduro + filtro no alineado" que sirve para ambos lados
+
+Esto busca que el robot no quede:
+
+- demasiado agresivo en ventas maduras
+- ni demasiado conservador bloqueando compras por regla fija
+
+Comentarios de entrada frecuentes:
+
+- `split_retrace_limit`
+- `split_retrace_filter_opposite_retrace_only`
+- `filter_hold_context_retrace_only`
+- `candle_context_retrace_only`
+- `entry_quality_retrace_only`
+- `candle_context_market_only`
+- `filter_hold_small_market_only`
+- `entry_context_hard_contradiction`
+- `entry_quality_low_skip`
+- `m1_execution_confirmed`
+- `WAITING_M1_CONFIRMATION`
+
+### 23.4 Que intenta evitar la logica nueva
+
+Patrones que ahora se degradan o bloquean:
+
+- vender demasiado abajo o comprar demasiado arriba dentro de la vela de senal
+- entrar al mercado sobre una mecha fuerte o rechazo contrario
+- perseguir precio cuando el trade ya esta muy estirado frente a `EMA_20` o `SessionVWAP`
+- mantener `market` cuando el filtro va opuesto y la estructura parece spike/news move
+- ejecutar una entrada madura con filtro no alineado solo porque el lado principal sigue fuerte
+- bloquear una compra o una venta solo por el lado, en vez de por la calidad del contexto
+
+En esos casos, el sistema intenta:
+
+- degradar a `retrace_only`
+- pasar a staging
+- o bloquear la idea si la calidad de entrada cae demasiado
+
+Lectura simple:
+
+- `conservador bueno`: espera mejor punto sin matar la tesis
+- `conservador malo`: cancela demasiado y deja pasar movimientos limpios
+- `agresivo bueno`: entra temprano y protege rapido
+- `agresivo malo`: persigue impulsos cortos o agotados
+
+La logica actual intenta quedarse en el medio:
+
+- tesis viva
+- timing exigente
+- gestion rapida una vez que el trade ya entro
+
+### 23.5 Gestion actual de riesgo y salida
+
+Una vez abierta la posicion, las capas activas son:
+
+- `trade_management` progresivo por avance a `TP`
+- `runtime_monitor` para reversals, lateralizacion y perdida de follow-through
+- cierre por senal opuesta solo si la posicion ya esta no negativa
+- armado de salida a `BE` para la tesis vieja cuando el mismo perfil emite una senal fuerte contraria
+
+Eso significa:
+
+- el sistema intenta realizar ganancias parciales antes del `TP`
+- no deberia cerrar por contradiccion nueva si la posicion sigue en rojo
+- si un spike o reversal ocurre cuando el trade ya esta en verde, puede cerrar completo mas rapido
+
+Casos practicos:
+
+- si ves una posicion con poco lote restante y muy cerca del `TP`, puede cerrar completa por regla de remanente minimo
+- si ves una `pending_limit` desaparecer mientras la market sigue viva, normalmente fue cancelacion por progreso
+- si ves una tesis nueva opuesta y la vieja sigue abierta, revisa si quedo armada para salir en `BE`
+
+### 23.6 Pausa automatica por mercado cerrado o feed invalido
+
+El pipeline puede pausar `production`, `sync_trades` y `monitor_runtime` si:
+
+- no hay tick
+- el tick no tiene timestamp util
+- `bid/ask` son invalidos
+- el ultimo tick esta demasiado viejo
+
+La pausa se quita sola cuando vuelven ticks frescos.
+
+### 23.7 Como auditar una senal o trade rapidamente
+
+Para una senal nueva, revisar:
+
+- `outputs/production/production_signals.csv`
+- columnas:
+  - `signal`
+  - `primary_signal`
+  - `primary_confidence`
+  - `filter_signal`
+  - `filter_confidence`
+  - `entry_management_comment`
+  - `entry_context_reason`
+  - `entry_context_quality_score`
+  - `entry_context_quality_decision`
+  - `entry_execution_confirmation_tf`
+  - `entry_execution_confirmation_score`
+  - `entry_execution_confirmation_passed`
+  - `entry_execution_confirmation_reason`
+  - `live_entry_price`
+  - `pending_order_price`
+
+Para una candidata retenida:
+
+- `outputs/production/staged_signal_report.csv`
+- columnas:
+  - `candidate_mode`
+  - `status`
+  - `status_reason`
+  - `trigger_price`
+  - `expires_at`
+  - `refresh_action`
+  - `refresh_reason`
+  - `last_execution_confirmation_timeframe`
+  - `last_execution_confirmation_score`
+  - `last_execution_confirmation_passed`
+  - `last_execution_confirmation_reason`
+  - `cancel_reason`
+
+Lectura practica del staging:
+
+- `status = ACTIVE` + `staged_action = WAITING_M1_CONFIRMATION` significa que la tesis sigue viva pero `M1` no confirmo el timing todavia
+- `entry_execution_confirmation_passed = true` indica que la capa `M1` acompano la entrada o la activacion
+- `entry_execution_confirmation_reason` resume por que `M1` confirmo o retuvo la ejecucion
+
+Para una posicion ya abierta:
+
+- `outputs/production/trade_lifecycle_report.csv`
+- columnas:
+  - `status`
+  - `entry_leg`
+  - `execution_price`
+  - `sl_price`
+  - `tp_price`
+  - `managed_stage_ids`
+  - `break_even_applied`
+  - `management_progress_to_tp`
+  - `last_management_action`
+  - `runtime_monitor_action`
+  - `runtime_monitor_reason`
+
+Para ver si un perfil ya esta entrando en drift:
+
+- `outputs/production/drift_gate_status.json`
+- campos importantes:
+  - `status`
+  - `rerun_recommended`
+  - `reasons`
+  - `profit_factor_recent`
+  - `net_pnl_recent`
+  - `dominant_loss_route`
+
+### 23.8 Lectura practica de desempeno
+
+Si ves muchas ganancias y muchas perdidas al mismo tiempo, normalmente el problema esta en una de estas capas:
+
+- la direccion fue correcta, pero la entrada fue mala:
+  - revisar `entry_context_quality_score`
+  - revisar `entry_management_comment`
+
+- la entrada fue razonable, pero la gestion no descargo a tiempo:
+  - revisar `management_progress_to_tp`
+  - revisar `managed_stage_ids`
+  - revisar `runtime_monitor_action`
+
+- la tesis cambio y el sistema quedo con lados opuestos abiertos:
+  - revisar `production_signals.csv` por perfil
+  - confirmar si la posicion vieja quedo armada para salir en `BE`
+
+En general:
+
+- el perfil viejo suele reaccionar antes en `M5`
+- el perfil nuevo `M15` tiende a entrar con menos lotaje y mas contexto
+- la comparacion correcta no es solo `PnL`, sino:
+  - calidad de entrada
+  - velocidad de deteccion del giro
+  - si protege al llegar a verde
+
+### 23.9 Como leer el drift gate
+
+El `drift gate` no cierra trades ni cambia la entrada. Es una alarma operacional.
+
+Su funcion es responder:
+
+- "este perfil sigue comportandose parecido al backtest reciente?"
+- "o ya entro en una racha donde conviene revisar release, config o regimen?"
+
+Senales importantes:
+
+- `status = healthy`
+  - el comportamiento reciente no muestra deterioro fuerte
+
+- `status = warning`
+  - hay sintomas de degradacion, pero todavia no necesariamente amerita apagar
+
+- `status = critical`
+  - el perfil reciente ya no se parece a su comportamiento esperado
+  - normalmente conviene revisar:
+    - ruta de perdida dominante
+    - sesiones recientes
+    - si hace falta nuevo backtest o nueva release
+
+`rerun_recommended = true` significa:
+
+- no que debas parar todo de inmediato
+- sino que ya hay evidencia suficiente para justificar un backtest o una reevaluacion seria
+
+### 23.10 Glosario corto para operar el live
+
+- `tesis`: la idea principal del trade (`BUY`, `SELL`, `HOLD`)
+- `market`: orden inmediata al precio disponible
+- `pending_limit`: orden real en MT5 esperando mejor precio
+- `staged`: idea guardada internamente, sin orden real todavia
+- `retrace_only`: solo entra si mejora el punto
+- `split`: entrada dividida en dos piernas
+- `BE`: `break-even`; salida sin perdida
+- `follow-through`: continuidad del movimiento despues de entrar
+- `impulse_birth`: impulso naciendo
+- `impulse_mature`: impulso ya avanzado
+- `impulse_exhausted`: impulso agotado o demasiado estirado

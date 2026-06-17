@@ -16,13 +16,13 @@ strategy_profile:
 
 validation:
   mode: last_n
-  n: 350
+  n: 300
   test_size: 0.2
 
 data:
   symbol: "EURUSD"
   timeframe: "M5"
-  n_bars: 10000
+  n_bars: 8000
   use_cache: true
   cache_expiry_hours: 1
   pip_size: 0.0001
@@ -103,8 +103,8 @@ models:
   - name: PROPHET
     enabled: true
     param_grid:
-      changepoint_prior_scale: [0.05]
-      seasonality_prior_scale: [0.5]
+      changepoint_prior_scale: [0.01, 0.05]
+      seasonality_prior_scale: [1.0]
       seasonality_mode: ["additive"]
       yearly_seasonality: [false]
       weekly_seasonality: [true]
@@ -127,7 +127,7 @@ models:
   - name: RandomForestRegressor
     enabled: true
     param_grid:
-      n_estimators: [100, 200]
+      n_estimators: [100]
       max_depth: [4, 6]
       min_samples_leaf: [10]
 
@@ -135,14 +135,14 @@ models:
     enabled: true
     param_grid:
       learning_rate: [0.03, 0.05]
-      max_depth: [4, 6]
+      max_depth: [6]
       max_iter: [100]
       min_samples_leaf: [10]
 
 backtest:
   enabled: true
-  initial_train: 2200
-  step: 5
+  initial_train: 2000
+  step: 10
   horizon: 1
   target: "ReturnFwd_1"
   pip_size: 0.0001

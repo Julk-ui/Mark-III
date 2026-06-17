@@ -1,0 +1,179 @@
+2026-05-16 09:40:08 | INFO     | ============================================================
+2026-05-16 09:40:08 | INFO     | TRADING PIPELINE INICIADO
+2026-05-16 09:40:08 | INFO     | ============================================================
+2026-05-16 09:40:08 | INFO     | 📁 Directorios de trabajo configurados
+2026-05-16 09:40:08 | INFO     | 🚀 Ejecutando modo: PRODUCTION
+2026-05-16 09:40:08 | INFO     | 
+============================================================
+2026-05-16 09:40:08 | INFO     | MODO: PRODUCCIÓN
+2026-05-16 09:40:08 | INFO     | ============================================================
+
+2026-05-16 09:40:08 | INFO     | 📥 Cargando datos para producción...
+2026-05-16 09:40:08 | INFO     | PASO 1: CARGANDO DATOS
+2026-05-16 09:40:08 | INFO     | ------------------------------------------------------------
+2026-05-16 09:40:08 | INFO     |   -> Runtime data policy: use_cache=False, cache_expiry_hours=0.08333333333333333
+2026-05-16 09:43:06 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:43:06 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:43:35 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:43:35 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:44:04 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:44:04 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:44:36 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:44:36 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:45:19 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:45:19 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:45:23 | INFO     | ============================================================
+2026-05-16 09:45:23 | INFO     | TRADING PIPELINE INICIADO
+2026-05-16 09:45:23 | INFO     | ============================================================
+2026-05-16 09:45:23 | INFO     | 📁 Directorios de trabajo configurados
+2026-05-16 09:45:23 | INFO     | 🚀 Ejecutando modo: PRODUCTION
+2026-05-16 09:45:23 | INFO     | 
+============================================================
+2026-05-16 09:45:23 | INFO     | MODO: PRODUCCIÓN
+2026-05-16 09:45:23 | INFO     | ============================================================
+
+2026-05-16 09:45:23 | INFO     | 📥 Cargando datos para producción...
+2026-05-16 09:45:23 | INFO     | PASO 1: CARGANDO DATOS
+2026-05-16 09:45:23 | INFO     | ------------------------------------------------------------
+2026-05-16 09:45:23 | INFO     |   -> Runtime data policy: use_cache=False, cache_expiry_hours=0.08333333333333333
+2026-05-16 09:45:23 | INFO     |   -> Símbolo 'EURUSD' cargado desde config/config.yaml
+2026-05-16 09:45:23 | INFO     |   -> Timeframe 'M5' cargado desde config/config.yaml
+2026-05-16 09:45:23 | INFO     | ✓ Datos cargados: 8000 filas, 6 columnas.
+2026-05-16 09:45:23 | INFO     | PASO 2: LIMPIANDO DATOS
+2026-05-16 09:45:23 | INFO     | ------------------------------------------------------------
+2026-05-16 09:45:23 | INFO     | ✓ Datos limpios: 8000 filas restantes.
+2026-05-16 09:45:23 | INFO     | PASO 3: GENERANDO FEATURES
+2026-05-16 09:45:23 | INFO     | ------------------------------------------------------------
+2026-05-16 09:45:23 | INFO     |   -> Retornos agregados para períodos: [1, 2, 3, 4, 5, 10]
+2026-05-16 09:45:23 | INFO     |   -> Indicadores tecnicos agregados.
+2026-05-16 09:45:23 | INFO     |   -> Lags agregados para la columna: 'Close'
+2026-05-16 09:45:23 | INFO     |   -> Lags agregados para la columna: 'Volume'
+2026-05-16 09:45:31 | INFO     |   -> Targets de barrera agregados: 5p / 5b
+2026-05-16 09:45:31 | INFO     |   -> Conteos de valores NaN generados por las features:
+2026-05-16 09:45:31 | INFO     | ✓ Features generadas. Total columnas: 59.
+2026-05-16 09:45:31 | INFO     | 🏆 Bundle campeón global según backtest: HYBRID__ARIMA__HISTGRADIENTBOOSTINGCLASSIFIER
+2026-05-16 09:45:31 | INFO     | 🎯 Producción configurada para operar únicamente con el bundle campeón.
+2026-05-16 09:45:31 | INFO     | 📦 Release activa de producción [aggressive_hybrid_v1_3_tp5_sl3]: 20260513_152459 (activada 2026-05-14T00:14:08)
+2026-05-16 09:45:31 | INFO     | Presupuesto de riesgo: total=158.88 | abierto=0.00 | restante=158.88 | por_trade=52.96
+2026-05-16 09:45:31 | INFO     | 🔎 Generando señales de producción para TODOS los modelos habilitados...
+
+2026-05-16 09:45:31 | INFO     | ➡ Procesando modelo: ARIMA | params={'d': 0.0, 'p': 3.0, 'q': 0.0}
+2026-05-16 09:45:31 | INFO     |   💾 Intentando cargar el modelo desde: C:\Users\USER\Documentos\Maestria\Mark-III\outputs\models\releases\20260513_152459\arima_best.pkl
+2026-05-16 09:45:31 | INFO     | [ARIMA] Cargado dict desde C:\Users\USER\Documentos\Maestria\Mark-III\outputs\models\releases\20260513_152459\arima_best.pkl con claves: ['model', 'residual_model', 'feature_names', 'params', 'target_name', 'model_class']
+2026-05-16 09:45:31 | INFO     | [ARIMA] Usando artifact['model'] como modelo.
+2026-05-16 09:45:31 | INFO     | [ARIMA] Modelo cargado desde: C:\Users\USER\Documentos\Maestria\Mark-III\outputs\models\releases\20260513_152459\arima_best.pkl
+2026-05-16 09:45:36 | INFO     |   📈 Modelo ARIMA listo para bundle híbrido -> retorno=-0.000116, prob_up=nan, prob_hold=nan, prob_down=nan
+2026-05-16 09:45:36 | INFO     | ➡ Procesando modelo: HistGradientBoostingClassifier | params={'learning_rate': 0.05, 'max_depth': 8.0, 'max_iter': 150.0, 'min_samples_leaf': 10.0}
+2026-05-16 09:45:36 | INFO     |   💾 Intentando cargar el modelo desde: C:\Users\USER\Documentos\Maestria\Mark-III\outputs\models\releases\20260513_152459\histgradientboostingclassifier_best.pkl
+2026-05-16 09:45:39 | INFO     |   📈 Modelo HistGradientBoostingClassifier listo para bundle híbrido -> retorno=-0.000005, prob_up=0.022, prob_hold=0.946, prob_down=0.032
+2026-05-16 09:45:39 | INFO     |   ðŸ“ˆ Bundle HYBRID__ARIMA__HistGradientBoostingClassifier -> retorno=-0.000116, pips=-1.35, signal=HOLD, confidence=0.303, primary=HOLD(0.517), filter=HOLD(0.109), prob_up=0.022, prob_hold=0.946, prob_down=0.032, touch_prob=0.054, align=False, confirm=signal_hold, signal_tp=nan, signal_sl=nan, entry_plan=nan, SL_plan=nan, TP_plan=nan, entry_live=nan, SL_live=nan, TP_live=nan, lots=0.00, balance=5296.13, risk=0.00, entry_mgmt=disabled, market_lots=0.00, pending_lots=0.00, pending_price=nan, pending_sl=nan, pending_tp=nan
+2026-05-16 09:45:40 | INFO     | 
+💾 Señales de producción guardadas en: outputs\production\production_signals.csv
+2026-05-16 09:45:41 | INFO     | ✅ MODO PRODUCCIÓN COMPLETADO
+
+2026-05-16 09:45:43 | INFO     | ============================================================
+2026-05-16 09:45:43 | INFO     | TRADING PIPELINE INICIADO
+2026-05-16 09:45:43 | INFO     | ============================================================
+2026-05-16 09:45:43 | INFO     | 📁 Directorios de trabajo configurados
+2026-05-16 09:45:43 | INFO     | 🚀 Ejecutando modo: SYNC_TRADES
+2026-05-16 09:45:43 | INFO     | 
+============================================================
+2026-05-16 09:45:43 | INFO     | MODO: SYNC TRADES
+2026-05-16 09:45:43 | INFO     | ============================================================
+
+2026-05-16 09:45:44 | INFO     | 🔄 Sincronización completada. Trades cerrados registrados: 102
+2026-05-16 09:45:44 | INFO     | ✅ MODO SYNC TRADES COMPLETADO
+
+2026-05-16 09:46:28 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:46:28 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:47:05 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:47:05 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:47:36 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:47:36 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:48:07 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:48:07 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:48:35 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:48:35 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:49:02 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:49:02 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:49:37 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:49:37 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:50:01 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:50:01 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:50:09 | INFO     | ============================================================
+2026-05-16 09:50:09 | INFO     | TRADING PIPELINE INICIADO
+2026-05-16 09:50:09 | INFO     | ============================================================
+2026-05-16 09:50:09 | INFO     | 📁 Directorios de trabajo configurados
+2026-05-16 09:50:09 | INFO     | 🚀 Ejecutando modo: PRODUCTION
+2026-05-16 09:50:09 | INFO     | 
+============================================================
+2026-05-16 09:50:09 | INFO     | MODO: PRODUCCIÓN
+2026-05-16 09:50:09 | INFO     | ============================================================
+
+2026-05-16 09:50:09 | INFO     | 📥 Cargando datos para producción...
+2026-05-16 09:50:09 | INFO     | PASO 1: CARGANDO DATOS
+2026-05-16 09:50:09 | INFO     | ------------------------------------------------------------
+2026-05-16 09:50:09 | INFO     |   -> Runtime data policy: use_cache=False, cache_expiry_hours=0.08333333333333333
+2026-05-16 09:50:09 | INFO     |   -> Símbolo 'EURUSD' cargado desde config/config.yaml
+2026-05-16 09:50:09 | INFO     |   -> Timeframe 'M5' cargado desde config/config.yaml
+2026-05-16 09:50:09 | INFO     | ✓ Datos cargados: 8000 filas, 6 columnas.
+2026-05-16 09:50:09 | INFO     | PASO 2: LIMPIANDO DATOS
+2026-05-16 09:50:09 | INFO     | ------------------------------------------------------------
+2026-05-16 09:50:09 | INFO     | ✓ Datos limpios: 8000 filas restantes.
+2026-05-16 09:50:09 | INFO     | PASO 3: GENERANDO FEATURES
+2026-05-16 09:50:09 | INFO     | ------------------------------------------------------------
+2026-05-16 09:50:09 | INFO     |   -> Retornos agregados para períodos: [1, 2, 3, 4, 5, 10]
+2026-05-16 09:50:10 | INFO     |   -> Indicadores tecnicos agregados.
+2026-05-16 09:50:10 | INFO     |   -> Lags agregados para la columna: 'Close'
+2026-05-16 09:50:10 | INFO     |   -> Lags agregados para la columna: 'Volume'
+2026-05-16 09:50:16 | INFO     |   -> Targets de barrera agregados: 5p / 5b
+2026-05-16 09:50:16 | INFO     |   -> Conteos de valores NaN generados por las features:
+2026-05-16 09:50:16 | INFO     | ✓ Features generadas. Total columnas: 59.
+2026-05-16 09:50:16 | INFO     | 🏆 Bundle campeón global según backtest: HYBRID__ARIMA__HISTGRADIENTBOOSTINGCLASSIFIER
+2026-05-16 09:50:16 | INFO     | 🎯 Producción configurada para operar únicamente con el bundle campeón.
+2026-05-16 09:50:16 | INFO     | 📦 Release activa de producción [aggressive_hybrid_v1_3_tp5_sl3]: 20260513_152459 (activada 2026-05-14T00:14:08)
+2026-05-16 09:50:16 | INFO     | Presupuesto de riesgo: total=158.88 | abierto=0.00 | restante=158.88 | por_trade=52.96
+2026-05-16 09:50:16 | INFO     | 🔎 Generando señales de producción para TODOS los modelos habilitados...
+
+2026-05-16 09:50:16 | INFO     | ➡ Procesando modelo: ARIMA | params={'d': 0.0, 'p': 3.0, 'q': 0.0}
+2026-05-16 09:50:16 | INFO     |   💾 Intentando cargar el modelo desde: C:\Users\USER\Documentos\Maestria\Mark-III\outputs\models\releases\20260513_152459\arima_best.pkl
+2026-05-16 09:50:16 | INFO     | [ARIMA] Cargado dict desde C:\Users\USER\Documentos\Maestria\Mark-III\outputs\models\releases\20260513_152459\arima_best.pkl con claves: ['model', 'residual_model', 'feature_names', 'params', 'target_name', 'model_class']
+2026-05-16 09:50:16 | INFO     | [ARIMA] Usando artifact['model'] como modelo.
+2026-05-16 09:50:16 | INFO     | [ARIMA] Modelo cargado desde: C:\Users\USER\Documentos\Maestria\Mark-III\outputs\models\releases\20260513_152459\arima_best.pkl
+2026-05-16 09:50:19 | INFO     |   📈 Modelo ARIMA listo para bundle híbrido -> retorno=-0.000116, prob_up=nan, prob_hold=nan, prob_down=nan
+2026-05-16 09:50:19 | INFO     | ➡ Procesando modelo: HistGradientBoostingClassifier | params={'learning_rate': 0.05, 'max_depth': 8.0, 'max_iter': 150.0, 'min_samples_leaf': 10.0}
+2026-05-16 09:50:19 | INFO     |   💾 Intentando cargar el modelo desde: C:\Users\USER\Documentos\Maestria\Mark-III\outputs\models\releases\20260513_152459\histgradientboostingclassifier_best.pkl
+2026-05-16 09:50:20 | INFO     |   📈 Modelo HistGradientBoostingClassifier listo para bundle híbrido -> retorno=-0.000005, prob_up=0.022, prob_hold=0.946, prob_down=0.032
+2026-05-16 09:50:20 | INFO     |   ðŸ“ˆ Bundle HYBRID__ARIMA__HistGradientBoostingClassifier -> retorno=-0.000116, pips=-1.35, signal=HOLD, confidence=0.303, primary=HOLD(0.517), filter=HOLD(0.109), prob_up=0.022, prob_hold=0.946, prob_down=0.032, touch_prob=0.054, align=False, confirm=signal_hold, signal_tp=nan, signal_sl=nan, entry_plan=nan, SL_plan=nan, TP_plan=nan, entry_live=nan, SL_live=nan, TP_live=nan, lots=0.00, balance=5296.13, risk=0.00, entry_mgmt=disabled, market_lots=0.00, pending_lots=0.00, pending_price=nan, pending_sl=nan, pending_tp=nan
+2026-05-16 09:50:21 | INFO     | 
+💾 Señales de producción guardadas en: outputs\production\production_signals.csv
+2026-05-16 09:50:22 | INFO     | ✅ MODO PRODUCCIÓN COMPLETADO
+
+2026-05-16 09:50:33 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:50:33 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:51:04 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:51:04 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:51:33 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:51:33 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:52:04 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:52:04 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+
+2026-05-16 09:52:43 | INFO     | ðŸ” Runtime monitor completado. Trades abiertos revisados: 0
+2026-05-16 09:52:43 | INFO     | âœ… MODO RUNTIME MONITOR COMPLETADO
+

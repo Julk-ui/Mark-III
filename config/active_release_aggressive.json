@@ -1,10 +1,10 @@
 {
-  "release_id": "20260501_075630",
-  "activated_at": "2026-05-01T11:39:15",
-  "champion_model": "HistGradientBoosting",
+  "release_id": "20260507_152258",
+  "activated_at": "2026-05-07T15:48:40",
+  "champion_model": "RandomForestRegressor",
   "strategy_profile": "aggressive",
-  "config_path": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\config\\config_optimizado_20260501_075630.yaml",
-  "models_dir": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\outputs\\models\\releases\\20260501_075630",
-  "summary_csv_path": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\outputs\\backtest\\summary_best_runs_20260501_075630.csv",
-  "summary_xlsx_path": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\outputs\\backtest\\summary_best_runs_20260501_075630.xlsx"
+  "config_path": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\config\\config_optimizado_20260507_152258.yaml",
+  "models_dir": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\outputs\\models\\releases\\20260507_152258",
+  "summary_csv_path": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\outputs\\backtest\\summary_best_runs_20260507_152258.csv",
+  "summary_xlsx_path": null
 }

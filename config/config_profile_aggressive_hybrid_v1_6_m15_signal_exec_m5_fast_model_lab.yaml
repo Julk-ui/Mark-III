@@ -1,0 +1,346 @@
+# M15 signal profile intended to be polled every 5 minutes in runtime.
+# Current pipeline still works with a single feature timeframe (M15 here),
+# but live execution uses the current market tick and can therefore refine
+# entries intra-bar when the scheduler runs every 5 minutes.
+
+mt5:
+  login: 68238343
+  password: Colombia123*
+  server: RoboForex-Pro
+  path: C:\Program Files\RoboForex - MetaTrader 5\terminal64.exe
+
+strategy_profile:
+  name: aggressive_hybrid_v1_6_m15_signal_exec_m5_fast_model_lab
+
+prediction_stack:
+  mode: hybrid_primary_plus_filter
+  primary_models:
+    - ARIMA
+    - PROPHET
+    - Ridge
+    - RandomForestRegressor
+    - HistGradientBoosting
+  filter_models:
+    - RandomForestClassifier
+    - HistGradientBoostingClassifier
+    - LogisticRegressionClassifier
+  require_alignment: false
+  filter_gate_mode: primary_only
+  support_score_min: 0.0
+  contradiction_margin: 0.1
+  top_k_primary_for_bundle_eval: 5
+  top_k_filter_for_bundle_eval: 3
+
+validation:
+  mode: last_n
+  n: 320
+  test_size: 0.2
+
+data:
+  symbol: EURUSD
+  timeframe: M15
+  n_bars: 4000
+  use_cache: true
+  cache_expiry_hours: 1
+  runtime_use_cache: false
+  runtime_cache_expiry_minutes: 5
+  pip_size: 0.0001
+
+data_cleaning:
+  handle_missing: ffill
+  outlier_method: iqr
+  outlier_threshold: 3.0
+  handle_outliers: cap
+  remove_duplicates: true
+  validate_ohlc: true
+  min_valid_ratio: 0.9
+
+eda:
+  enabled: false
+  output_dir: outputs/eda
+  price_col: Close
+
+features:
+  returns:
+    enabled: true
+    periods: [1, 2, 3, 4, 6, 8]
+  technical_indicators:
+    enabled: true
+    indicators:
+      - sma_20
+      - sma_50
+      - ema_12
+      - ema_26
+      - rsi_14
+      - macd
+      - bollinger_bands
+      - atr_14
+      - roc_3
+      - roc_6
+      - tick_volume_roc_3
+      - tick_volume_zscore_20
+      - close_location_value
+      - directional_volume_proxy_zscore_20
+      - mfi_14
+      - adx_14
+  price_action:
+    enabled: true
+    features:
+      - break_above_prev_high
+      - break_below_prev_low
+      - break_above_recent_high_3
+      - break_below_recent_low_3
+      - break_above_recent_high_6
+      - break_below_recent_low_6
+      - structure_score_3
+      - structure_score_6
+      - range_vs_avg_6
+  lag_features:
+    enabled: true
+    columns:
+      - Close
+      - Volume
+    lags: [1, 2, 3, 4, 6]
+
+unsupervised:
+  enabled: false
+
+models:
+  - name: Momentum
+    enabled: true
+    param_grid:
+      lookback: [1, 2]
+    selection_role: baseline
+    is_best: false
+  - name: ARIMA
+    enabled: true
+    param_grid:
+      p: [2, 3, 4]
+      d: [0, 1]
+      q: [0, 1]
+    selection_role: candidate
+    is_best: false
+  - name: PROPHET
+    enabled: true
+    param_grid:
+      changepoint_prior_scale: [0.02, 0.05]
+      seasonality_prior_scale: [5.0, 10.0]
+      daily_seasonality: [false]
+      weekly_seasonality: [false]
+      use_lagged_regressors: [true]
+    selection_role: candidate
+    is_best: false
+  - name: Ridge
+    enabled: true
+    param_grid:
+      alpha: [0.5, 2.0]
+    selection_role: candidate
+    is_best: false
+  - name: RandomForestRegressor
+    enabled: true
+    param_grid:
+      n_estimators: [200]
+      max_depth: [4, 6]
+      min_samples_leaf: [5]
+    selection_role: candidate
+    is_best: false
+  - name: HistGradientBoosting
+    enabled: true
+    param_grid:
+      learning_rate: [0.05]
+      max_depth: [4, 6]
+      max_iter: [100]
+      min_samples_leaf: [10]
+    selection_role: candidate
+    is_best: false
+  - name: RandomForestClassifier
+    enabled: true
+    param_grid:
+      n_estimators: [200]
+      max_depth: [4, 6]
+      min_samples_leaf: [5]
+    selection_role: candidate
+    is_best: false
+  - name: HistGradientBoostingClassifier
+    enabled: true
+    param_grid:
+      learning_rate: [0.05]
+      max_depth: [4, 6]
+      max_iter: [150]
+      min_samples_leaf: [10]
+    selection_role: candidate
+    is_best: false
+  - name: LogisticRegressionClassifier
+    enabled: true
+    param_grid:
+      C: [1.0]
+      max_iter: [400]
+      class_weight: [null]
+    selection_role: candidate
+    is_best: false
+
+backtest:
+  enabled: true
+  target_mode: return_regression
+  target: ReturnFwd_2
+  filter_target: BarrierReturn_8p_3b
+  barrier_pips: 8
+  barrier_horizon_bars: 3
+  barrier_price_col: Close
+  barrier_high_col: High
+  barrier_low_col: Low
+  initial_train: 1400
+  step: 4
+  horizon: 2
+  audit_followthrough_bars: 5
+  pip_size: 0.0001
+  threshold_pips: 3.5
+  plot_scale: price_target
+  risk_free: 0.0
+  periods_per_year: 24192
+  metrics:
+    - mae
+    - rmse
+    - hit_rate
+    - dm_stat
+    - dm_pvalue
+    - sharpe
+    - sortino
+    - calmar
+    - max_drawdown
+    - profit_factor
+    - win_rate
+    - payoff_ratio
+    - consistency_ratio
+    - avg_trade_return
+    - n_test_points
+    - n_trades
+
+output:
+  dir: outputs
+  save_predictions: false
+  save_models: true
+  save_plots: false
+  formats:
+    - csv
+
+trading:
+  min_pips_signal: 3.2
+  enable_confidence_filter: true
+  min_confidence: 0.5
+  barrier_probability_threshold: 0.5
+  barrier_probability_margin: 0.02
+  signal_confirmation:
+    enabled: false
+  execute_best_model_only: true
+  auto_execute_orders: false
+  allow_multiple_positions: true
+  magic_number: 202364
+  order_comment_prefix: MarkIII_M15Sig
+  order_deviation_points: 20
+  report_lookback_days: 30
+
+risk:
+  risk_per_trade_pct: 0.01
+  max_total_open_risk_pct: 0.03
+  halt_on_daily_loss: false
+  daily_loss_limit_pct: 0.0
+  daily_loss_measure: equity
+  pre_trade_risk_validation: true
+  risk_validation_tolerance_pct: 0.05
+  block_new_entries_without_sl: true
+  sl_mode: atr
+  fixed_sl_pips: 4.0
+  atr_sl_multiplier: 1.15
+  atr_sl_min_pips: 4.0
+  atr_sl_max_pips: 18.0
+  tp_rr_ratio: 1.5
+  tp_use_predicted_move: true
+  tp_min_pips: 0.0
+  tp_max_pips: 24.0
+  entry_mode: close
+  atr_entry_mult: 0.0
+
+entry_management:
+  enabled: true
+  mode: split_retrace_limit
+  initial_market_fraction: 0.55
+  pending_fraction: 0.45
+  retrace_fraction_of_stop: 0.3
+  pending_order_type: limit
+  cancel_pending_after_bars: 2
+  cancel_pending_on_position_close: true
+  disable_pending_when_filter_hold: false
+  comment_prefix: EM
+
+entry_staging:
+  enabled: true
+  mode: candidate_retrace
+  max_stage_bars: 1
+  min_primary_confidence: 0.62
+  min_abs_predicted_pips: 3.2
+  allow_stage_on_filter_contradiction_alignment: true
+  contradiction_stage_primary_confidence_min: 0.75
+  contradiction_stage_predicted_pips_min: 4.2
+  contradiction_stage_adx_min: 14.0
+  contradiction_stage_roc_abs_min: 0.00012
+  contradiction_stage_directional_volume_abs_min: 0.15
+  contradiction_stage_retrace_fraction: 0.2
+  contradiction_stage_max_stage_bars: 1
+  contradiction_stage_breakout_partial_fraction: 0.0
+  allow_stage_on_early_structural_reversal: true
+  early_reversal_confidence_min: 0.7
+  early_reversal_predicted_pips_min: 3.5
+  early_reversal_short_roc_abs_min: 0.0001
+  early_reversal_adx_min: 18.0
+  early_reversal_directional_volume_abs_min: 0.1
+  early_reversal_structure_score_abs_min: 0.15
+  allow_stage_on_filter_lead_structural: true
+  filter_lead_structural_filter_confidence_min: 0.52
+  filter_lead_structural_primary_hold_confidence_min: 0.45
+  filter_lead_structural_predicted_pips_floor: 3.2
+  filter_lead_structural_short_roc_abs_min: 0.0001
+  filter_lead_structural_adx_min: 16.0
+  filter_lead_structural_directional_volume_abs_min: 0.05
+  filter_lead_structural_structure_score_abs_min: 0.15
+  execution_confirmation_m1_enabled: true
+  execution_confirmation_m1_timeframe: M1
+  execution_confirmation_m1_n_bars: 180
+  execution_confirmation_m1_use_cache: false
+  execution_confirmation_m1_cache_expiry_minutes: 1
+  execution_confirmation_m1_fail_open_on_missing: true
+  execution_confirmation_m1_apply_on_near_trigger_partial: true
+  execution_confirmation_m1_apply_on_stage_activation: true
+  execution_confirmation_m1_breakout_lookback_bars: 2
+  execution_confirmation_m1_min_alignment_hits: 3
+  execution_confirmation_m1_min_score: 0.5
+  execution_confirmation_m1_min_roc1_pips: 0.1
+  execution_confirmation_m1_min_roc3_pips: 0.25
+  execution_confirmation_m1_min_directional_volume_abs: 0.0
+  execution_confirmation_m1_min_tick_volume_zscore: -0.1
+  execution_confirmation_m1_min_close_location_abs: 0.2
+  execution_confirmation_m1_max_opposite_wick_ratio: 0.6
+  execution_confirmation_m1_max_stretch_vs_avg_range: 1.4
+  execution_confirmation_m1_strong_alignment_override_enabled: true
+  execution_confirmation_m1_strong_alignment_min_hits: 4
+  execution_confirmation_m1_strong_alignment_min_score: 0.57
+  execution_confirmation_m1_strong_alignment_max_stretch_vs_avg_range: 1.9
+  execution_confirmation_m1_strong_alignment_require_breakout: true
+  entry_quality_force_retrace_on_mature_non_aligned_filter_enabled: true
+  entry_quality_force_retrace_on_mature_non_aligned_filter_always: false
+  entry_quality_mature_non_aligned_filter_market_score_min: 0.74
+  entry_quality_mature_non_aligned_filter_dirvol_min_abs: 0.15
+
+execution:
+  mode: backtest
+  parallel: false
+  n_jobs: -1
+
+model_selection:
+  primary_metric: directional_balance_score
+  primary_greater_is_better: true
+  secondary_metric: directional_pf_floor
+  secondary_greater_is_better: true
+  min_trades: 20
+  min_test_points: 80
+  publish_requires_candidate_thresholds: true

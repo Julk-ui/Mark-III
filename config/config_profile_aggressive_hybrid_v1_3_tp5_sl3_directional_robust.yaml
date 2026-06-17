@@ -1,0 +1,417 @@
+# ==========================================================
+# PERFIL AGGRESSIVE HYBRID V1.3 M5 | BACKTEST DIRECCIONAL
+# Objetivo:
+# - medir robustez por separado para compras y ventas
+# - priorizar recall direccional y estabilidad de ambos lados
+# - ampliar el grid del torneo sin tocar la release live actual
+# - publicar una release separada por strategy_profile
+# ==========================================================
+
+mt5:
+  login: 68238343
+  password: "Colombia123*"
+  server: "RoboForex-Pro"
+  path: "C:\\Program Files\\RoboForex - MetaTrader 5\\terminal64.exe"
+
+strategy_profile:
+  name: "aggressive_hybrid_v1_3_tp5_sl3_directional_robust"
+
+prediction_stack:
+  mode: "hybrid_primary_plus_filter"
+  primary_models:
+    - ARIMA
+    - Ridge
+    - HistGradientBoosting
+  filter_models:
+    - HistGradientBoostingClassifier
+    - LogisticRegressionClassifier
+    - ExtraTreesClassifier
+  require_alignment: true
+  filter_gate_mode: "support_score"
+  support_score_min: 0.08
+  contradiction_margin: 0.10
+  top_k_primary_for_bundle_eval: 4
+  top_k_filter_for_bundle_eval: 4
+
+validation:
+  mode: last_n
+  n: 400
+  test_size: 0.2
+
+data:
+  symbol: "EURUSD"
+  timeframe: "M5"
+  n_bars: 8000
+  use_cache: true
+  cache_expiry_hours: 1
+  runtime_use_cache: false
+  runtime_cache_expiry_minutes: 5
+  pip_size: 0.0001
+  additional_symbols:
+    - "GBPUSD"
+    - "US500"
+
+data_cleaning:
+  handle_missing: "ffill"
+  outlier_method: "iqr"
+  outlier_threshold: 3.0
+  handle_outliers: "cap"
+  remove_duplicates: true
+  validate_ohlc: true
+  min_valid_ratio: 0.90
+
+eda:
+  enabled: false
+  output_dir: "outputs/eda"
+  price_col: "Close"
+
+features:
+  returns:
+    enabled: true
+    periods: [1, 2, 3, 4, 5, 10]
+
+  technical_indicators:
+    enabled: true
+    indicators:
+      - sma_20
+      - sma_50
+      - ema_12
+      - ema_26
+      - rsi_14
+      - macd
+      - bollinger_bands
+      - atr_14
+      - roc_6
+      - tick_volume_roc_3
+      - tick_volume_zscore_20
+      - directional_volume_proxy_zscore_20
+      - mfi_14
+      - adx_14
+
+  lag_features:
+    enabled: true
+    columns: ["Close", "Volume"]
+    lags: [1, 2, 3, 5, 10]
+
+unsupervised:
+  enabled: false
+
+models:
+  - name: Momentum
+    enabled: true
+    selection_role: baseline
+    param_grid:
+      lookback: [1]
+
+  - name: ARIMA
+    enabled: true
+    stack_role: primary
+    param_grid:
+      p: [1, 2, 3, 4]
+      d: [0, 1]
+      q: [0, 1]
+
+  - name: Ridge
+    enabled: true
+    stack_role: primary
+    param_grid:
+      alpha: [0.25, 0.5, 1.0, 2.0, 4.0, 8.0]
+
+  - name: HistGradientBoosting
+    enabled: true
+    stack_role: primary
+    param_grid:
+      learning_rate: [0.02, 0.03, 0.05]
+      max_depth: [4, 6, 8]
+      max_iter: [100, 150]
+      min_samples_leaf: [5, 10]
+
+  - name: HistGradientBoostingClassifier
+    enabled: true
+    stack_role: filter
+    param_grid:
+      learning_rate: [0.02, 0.03, 0.05]
+      max_depth: [4, 6, 8]
+      max_iter: [150, 200]
+      min_samples_leaf: [5, 10]
+
+  - name: LogisticRegressionClassifier
+    enabled: true
+    stack_role: filter
+    param_grid:
+      C: [0.5, 1.0, 2.0]
+      max_iter: [400, 800]
+      class_weight: ["balanced", null]
+
+  - name: ExtraTreesClassifier
+    enabled: true
+    stack_role: filter
+    param_grid:
+      n_estimators: [150, 250, 400]
+      max_depth: [6, 8]
+      min_samples_leaf: [3, 5]
+
+backtest:
+  enabled: true
+  target_mode: "return_regression"
+  target: "ReturnFwd_4"
+  filter_target: "BarrierReturn_5p_5b"
+  barrier_pips: 5
+  barrier_horizon_bars: 5
+  barrier_price_col: "Close"
+  barrier_high_col: "High"
+  barrier_low_col: "Low"
+  initial_train: 2000
+  step: 6
+  horizon: 4
+  audit_followthrough_bars: 18
+  pip_size: 0.0001
+  threshold_pips: 3.5
+  plot_scale: "price"
+  risk_free: 0.0
+  periods_per_year: 72576
+
+  metrics:
+    - mae
+    - rmse
+    - hit_rate
+    - dm_stat
+    - dm_pvalue
+    - sharpe
+    - sortino
+    - calmar
+    - max_drawdown
+    - profit_factor
+    - win_rate
+    - payoff_ratio
+    - consistency_ratio
+    - avg_trade_return
+    - n_test_points
+    - n_trades
+
+output:
+  dir: "outputs"
+  save_predictions: true
+  save_models: true
+  save_plots: true
+  formats:
+    - csv
+    - excel
+
+trading:
+  min_pips_signal: 3.5
+  enable_confidence_filter: true
+  min_confidence: 0.52
+  barrier_probability_threshold: 0.50
+  barrier_probability_margin: 0.02
+  signal_confirmation:
+    enabled: false
+    require_momentum_alignment: true
+    momentum_column: "ROC_6"
+    momentum_buy_min: 0.0
+    momentum_sell_max: 0.0
+    require_volume_confirmation: false
+    volume_column: "TickVolume_ZScore_20"
+    volume_min_strength: 0.0
+    require_regime_confirmation: false
+    regime_column: "ADX_14"
+    regime_min_strength: 20.0
+  execute_best_model_only: true
+  auto_execute_orders: true
+  allow_multiple_positions: true
+  magic_number: 202358
+  order_comment_prefix: "MarkIII_AggH13R"
+  order_deviation_points: 20
+  report_lookback_days: 30
+
+risk:
+  risk_per_trade_pct: 0.01
+  max_total_open_risk_pct: 0.03
+  halt_on_daily_loss: false
+  daily_loss_limit_pct: 0.0
+  daily_loss_measure: "equity"
+  pre_trade_risk_validation: true
+  risk_validation_tolerance_pct: 0.05
+  block_new_entries_without_sl: true
+  sl_mode: "atr"
+  fixed_sl_pips: 3.0
+  atr_sl_multiplier: 1.35
+  atr_sl_min_pips: 5.0
+  atr_sl_max_pips: 12.0
+  tp_rr_ratio: 1.6666667
+  tp_use_predicted_move: true
+  tp_min_pips: 0.0
+  tp_max_pips: 15.0
+  entry_mode: "close"
+  atr_entry_mult: 0.0
+entry_management:
+  enabled: true
+  mode: split_retrace_limit
+  initial_market_fraction: 0.5
+  pending_fraction: 0.5
+  retrace_fraction_of_stop: 0.55
+  pending_order_type: limit
+  cancel_pending_after_bars: 2
+  cancel_pending_on_position_close: true
+  disable_pending_when_filter_hold: true
+  comment_prefix: "EM"
+entry_staging:
+  enabled: true
+  mode: "candidate_retrace"
+  max_stage_bars: 2
+  min_primary_confidence: 0.68
+  min_abs_predicted_pips: 3.2
+  allow_stage_on_filter_contradiction_alignment: true
+  contradiction_stage_primary_confidence_min: 0.7
+  contradiction_stage_predicted_pips_min: 3.5
+  contradiction_stage_adx_min: 8.0
+  contradiction_stage_roc_abs_min: 0.0006
+  contradiction_stage_directional_volume_abs_min: 0.5
+  contradiction_stage_retrace_fraction: 0.25
+  contradiction_stage_max_stage_bars: 1
+  contradiction_stage_breakout_partial_fraction: 0.0
+  allow_stage_on_strong_primary_filter_hold: true
+  strong_primary_hold_confidence_min: 0.9
+  strong_primary_hold_predicted_pips_min: 6.0
+  strong_primary_hold_adx_min: 25.0
+  strong_primary_hold_roc_abs_min: 0.00035
+  strong_primary_hold_retrace_fraction: 0.25
+  strong_primary_hold_max_stage_bars: 1
+  strong_primary_hold_breakout_partial_fraction: 0.2
+  direct_confirmed_revalidate_on_activation: true
+  direct_confirmed_cancel_if_primary_mismatch: true
+  direct_confirmed_cancel_if_confidence_drops: true
+  direct_confirmed_cancel_if_predicted_move_drops: true
+  direct_confirmed_activation_confidence_min: 0.6
+  direct_confirmed_activation_predicted_pips_min: 3.5
+  pilot_entry_enabled: true
+  pilot_confidence_min: 0.6
+  pilot_fraction_of_full_size: 0.25
+  pilot_allow_on_filter_contradiction: false
+  pilot_convert_to_staged: true
+  pilot_market_fallback_enabled: false
+  pilot_retrace_fraction: 0.5
+  pilot_allowed_profiles:
+  - "strong_trend"
+  - "normal_trend"
+  pilot_revalidate_on_activation: true
+  pilot_cancel_if_primary_mismatch: true
+  pilot_cancel_if_filter_contradicted: true
+  pilot_cancel_if_confidence_drops: true
+  pilot_cancel_if_predicted_move_drops: true
+  adaptive_profile_enabled: true
+  adaptive_roc_column: "ROC_6"
+  adaptive_adx_column: "ADX_14"
+  adaptive_directional_volume_column: "DirectionalVolumeProxy_ZScore_20"
+  strong_trend_adx_min: 35.0
+  normal_trend_adx_min: 22.0
+  strong_trend_roc_abs_min: 0.00045
+  normal_trend_roc_abs_min: 0.0002
+  strong_trend_volume_abs_min: 0.35
+  normal_trend_volume_abs_min: 0.05
+  strong_trend_retrace_fraction: 0.2
+  normal_trend_retrace_fraction: 0.35
+  weak_trend_retrace_fraction: 0.55
+  strong_trend_max_stage_bars: 1
+  normal_trend_max_stage_bars: 2
+  weak_trend_max_stage_bars: 2
+  strong_trend_breakout_partial_fraction: 0.35
+  normal_trend_breakout_partial_fraction: 0.2
+  weak_trend_breakout_partial_fraction: 0.0
+  breakout_trigger_fraction_of_stop: 0.12
+  breakout_min_trigger_pips: 0.8
+  convert_direct_filter_hold_to_staged: true
+  convert_direct_confirmed_to_staged: true
+  direct_filter_hold_retrace_fraction: 0.5
+  direct_filter_hold_stop_buffer_pips: 0.3
+  dynamic_stop_atr_fraction: 0.25
+  dynamic_stop_min_pips: 5.0
+  require_directional_volume_activation: false
+  directional_volume_column: "DirectionalVolumeProxy_ZScore_20"
+  directional_volume_buy_min: 0.1
+  directional_volume_sell_max: -0.1
+  allow_stage_on_filter_hold: true
+  block_stage_on_filter_contradiction: true
+  soft_support_score_min: -0.02
+  retrace_trigger_fraction_of_stop: 0.35
+  min_entry_improvement_pips: 0.8
+  allow_breakout_if_filter_upgrades: true
+  breakout_min_support_score: 0.08
+  cancel_on_opposite_primary_signal: true
+  cancel_on_filter_contradiction: true
+  comment_prefix: "ES"
+
+trade_management:
+  enabled: true
+  move_sl_to: "breakeven"
+  breakeven_buffer_pips: 0.0
+  only_once_per_stage: true
+  skip_if_no_tp: true
+  comment_prefix: "TM"
+  break_even_stages:
+    - name: "progress_50_close_30"
+      trigger_progress_to_tp: 0.50
+      partial_close_fraction: 0.30
+      move_sl_to_break_even: true
+    - name: "progress_70_close_50"
+      trigger_progress_to_tp: 0.70
+      partial_close_fraction: 0.50
+      move_sl_to_break_even: false
+    - name: "progress_85_close_80"
+      trigger_progress_to_tp: 0.85
+      partial_close_fraction: 0.80
+      move_sl_to_break_even: false
+runtime_monitor:
+  enabled: true
+  recent_trade_max_bars: 3
+  min_bars_before_no_progress: 2
+  min_progress_to_keep: 0.2
+  min_profit_progress_to_manage: 0.0
+  partial_profit_progress_min: 0.25
+  protect_on_reversal: true
+  protect_on_lateralization: true
+  regime_column: "ADX_14"
+  momentum_column: "ROC_6"
+  directional_volume_column: "DirectionalVolumeProxy_ZScore_20"
+  close_location_column: "CloseLocationValue"
+  reversal_roc_abs_min: 0.00025
+  lateralization_adx_max: 18.0
+  lateralization_roc_abs_max: 0.00010
+  lateralization_dirvol_abs_max: 0.10
+  partial_close_fraction_on_weakness: 0.50
+  comment_prefix: "RTM"
+
+logging:
+  enabled: true
+  level: "INFO"
+  to_file: true
+  file_path: "logs/trading.log"
+  to_console: true
+
+execution:
+  mode: "backtest"
+  parallel: false
+  n_jobs: -1
+
+scheduler:
+  enabled: true
+  cron:
+  backtest_cron:
+  production_cron:
+  sync_trades_cron:
+  backtest_interval_minutes: 2880
+  production_interval_minutes: 5
+  sync_trades_interval_minutes: 1
+  sync_trades_offset_seconds: 30
+  timezone: "America/Bogota"
+  log_file: "logs/automation_scheduler.log"
+  production_use_optimized_config: true
+
+model_selection:
+  primary_metric: directional_balance_score
+  primary_greater_is_better: true
+  secondary_metric: directional_pf_floor
+  secondary_greater_is_better: true
+  min_trades: 36
+  min_test_points: 100
+  publish_requires_candidate_thresholds: true

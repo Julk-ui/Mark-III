@@ -1,0 +1,36 @@
+scheduler:
+  enabled: true
+
+  cron:
+  backtest_cron:
+  production_cron:
+  sync_trades_cron:
+
+  # Poll every 5 minutes even though the signal profile is M15.
+  # This lets production reevaluate the latest M15 context intra-bar
+  # and execute against the current market tick with finer timing.
+  backtest_interval_minutes:
+  production_interval_minutes: 5
+  sync_trades_interval_minutes: 1
+  monitor_runtime_interval_seconds: 60
+
+  production_offset_seconds: 20
+  sync_trades_offset_seconds: 50
+  monitor_runtime_offset_seconds: 12
+
+  production_profiles:
+    - aggressive_hybrid_v1_6_m15_signal_exec_m5_fast
+
+  sync_trades_profiles:
+    - aggressive_hybrid_v1_6_m15_signal_exec_m5_fast
+
+  monitor_runtime_profiles:
+    - aggressive_hybrid_v1_6_m15_signal_exec_m5_fast
+
+  production_profile_spacing_seconds: 0
+  sync_trades_profile_spacing_seconds: 0
+  monitor_runtime_profile_spacing_seconds: 0
+
+  timezone: "America/Bogota"
+  log_file: "logs/automation_scheduler_m15_signal_exec_m5_fast.log"
+  production_use_optimized_config: true

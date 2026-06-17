@@ -1,0 +1,473 @@
+2026-06-07 10:06:03 | INFO     | ============================================================
+2026-06-07 10:06:03 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:06:03 | INFO     | ============================================================
+2026-06-07 10:06:03 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:06:03 | INFO     | ðŸš€ Ejecutando modo: PRODUCTION
+2026-06-07 10:06:03 | INFO     | 
+============================================================
+2026-06-07 10:06:03 | INFO     | MODO: PRODUCCIÃ“N
+2026-06-07 10:06:03 | INFO     | ============================================================
+
+2026-06-07 10:06:03 | WARNING  | Mercado en pausa para EURUSD [production]: ultimo tick demasiado viejo (141063s > 900s).
+2026-06-07 10:06:03 | WARNING  | Mercado en pausa para EURUSD [monitor_runtime]: ultimo tick demasiado viejo (141063s > 900s).
+2026-06-07 10:07:38 | INFO     | ============================================================
+2026-06-07 10:07:38 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:07:38 | INFO     | ============================================================
+2026-06-07 10:07:38 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:07:38 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:07:38 | INFO     | 
+============================================================
+2026-06-07 10:07:38 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:07:38 | INFO     | ============================================================
+
+2026-06-07 10:07:38 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (141158s > 900s).
+2026-06-07 10:07:38 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:08:22 | INFO     | ============================================================
+2026-06-07 10:08:22 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:08:22 | INFO     | ============================================================
+2026-06-07 10:08:22 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:08:22 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:08:22 | INFO     | 
+============================================================
+2026-06-07 10:08:22 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:08:22 | INFO     | ============================================================
+
+2026-06-07 10:08:22 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (141203s > 900s).
+2026-06-07 10:08:22 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:09:17 | INFO     | ============================================================
+2026-06-07 10:09:17 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:09:17 | INFO     | ============================================================
+2026-06-07 10:09:17 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:09:17 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:09:17 | INFO     | 
+============================================================
+2026-06-07 10:09:17 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:09:17 | INFO     | ============================================================
+
+2026-06-07 10:09:17 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (141258s > 900s).
+2026-06-07 10:09:17 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:09:39 | WARNING  | Mercado en pausa para EURUSD [monitor_runtime]: ultimo tick demasiado viejo (141280s > 900s).
+2026-06-07 10:10:17 | INFO     | ============================================================
+2026-06-07 10:10:17 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:10:17 | INFO     | ============================================================
+2026-06-07 10:10:17 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:10:17 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:10:17 | INFO     | 
+============================================================
+2026-06-07 10:10:17 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:10:17 | INFO     | ============================================================
+
+2026-06-07 10:10:17 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (141318s > 900s).
+2026-06-07 10:10:17 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:10:55 | INFO     | ============================================================
+2026-06-07 10:10:55 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:10:55 | INFO     | ============================================================
+2026-06-07 10:10:55 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:10:55 | INFO     | ðŸš€ Ejecutando modo: PRODUCTION
+2026-06-07 10:10:55 | INFO     | 
+============================================================
+2026-06-07 10:10:55 | INFO     | MODO: PRODUCCIÃ“N
+2026-06-07 10:10:55 | INFO     | ============================================================
+
+2026-06-07 10:10:55 | WARNING  | Mercado en pausa para EURUSD [production]: ultimo tick demasiado viejo (141355s > 900s).
+2026-06-07 10:10:55 | INFO     | MODO PRODUCCIÃ“N EN PAUSA.
+
+2026-06-07 10:11:20 | INFO     | ============================================================
+2026-06-07 10:11:20 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:11:20 | INFO     | ============================================================
+2026-06-07 10:11:20 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:11:20 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:11:20 | INFO     | 
+============================================================
+2026-06-07 10:11:20 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:11:20 | INFO     | ============================================================
+
+2026-06-07 10:11:20 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (141380s > 900s).
+2026-06-07 10:11:20 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:11:41 | WARNING  | Mercado en pausa para EURUSD [monitor_runtime]: ultimo tick demasiado viejo (141401s > 900s).
+2026-06-07 10:12:18 | INFO     | ============================================================
+2026-06-07 10:12:18 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:12:18 | INFO     | ============================================================
+2026-06-07 10:12:18 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:12:18 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:12:18 | INFO     | 
+============================================================
+2026-06-07 10:12:18 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:12:18 | INFO     | ============================================================
+
+2026-06-07 10:12:18 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (141438s > 900s).
+2026-06-07 10:12:18 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:13:55 | INFO     | ============================================================
+2026-06-07 10:13:55 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:13:55 | INFO     | ============================================================
+2026-06-07 10:13:55 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:13:55 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:13:55 | INFO     | 
+============================================================
+2026-06-07 10:13:55 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:13:55 | INFO     | ============================================================
+
+2026-06-07 10:13:55 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (141535s > 900s).
+2026-06-07 10:13:55 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:14:17 | INFO     | ============================================================
+2026-06-07 10:14:17 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:14:17 | INFO     | ============================================================
+2026-06-07 10:14:17 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:14:17 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:14:17 | INFO     | 
+============================================================
+2026-06-07 10:14:17 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:14:17 | INFO     | ============================================================
+
+2026-06-07 10:14:17 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (141557s > 900s).
+2026-06-07 10:14:17 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:15:20 | INFO     | ============================================================
+2026-06-07 10:15:20 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:15:20 | INFO     | ============================================================
+2026-06-07 10:15:20 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:15:20 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:15:20 | INFO     | 
+============================================================
+2026-06-07 10:15:20 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:15:20 | INFO     | ============================================================
+
+2026-06-07 10:15:20 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (141620s > 900s).
+2026-06-07 10:15:20 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:15:48 | INFO     | ============================================================
+2026-06-07 10:15:48 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:15:48 | INFO     | ============================================================
+2026-06-07 10:15:48 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:15:48 | INFO     | ðŸš€ Ejecutando modo: PRODUCTION
+2026-06-07 10:15:48 | INFO     | 
+============================================================
+2026-06-07 10:15:48 | INFO     | MODO: PRODUCCIÃ“N
+2026-06-07 10:15:48 | INFO     | ============================================================
+
+2026-06-07 10:15:48 | WARNING  | Mercado en pausa para EURUSD [production]: ultimo tick demasiado viejo (141649s > 900s).
+2026-06-07 10:15:48 | INFO     | MODO PRODUCCIÃ“N EN PAUSA.
+
+2026-06-07 10:16:15 | INFO     | ============================================================
+2026-06-07 10:16:15 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:16:15 | INFO     | ============================================================
+2026-06-07 10:16:15 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:16:15 | INFO     | ðŸš€ Ejecutando modo: PRODUCTION
+2026-06-07 10:16:15 | INFO     | 
+============================================================
+2026-06-07 10:16:15 | INFO     | MODO: PRODUCCIÃ“N
+2026-06-07 10:16:15 | INFO     | ============================================================
+
+2026-06-07 10:16:15 | WARNING  | Mercado en pausa para EURUSD [production]: ultimo tick demasiado viejo (141675s > 900s).
+2026-06-07 10:16:15 | INFO     | MODO PRODUCCIÃ“N EN PAUSA.
+
+2026-06-07 10:16:22 | INFO     | ============================================================
+2026-06-07 10:16:22 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:16:22 | INFO     | ============================================================
+2026-06-07 10:16:22 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:16:22 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:16:22 | INFO     | 
+============================================================
+2026-06-07 10:16:22 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:16:22 | INFO     | ============================================================
+
+2026-06-07 10:16:22 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (141682s > 900s).
+2026-06-07 10:16:22 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:17:17 | INFO     | ============================================================
+2026-06-07 10:17:17 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:17:17 | INFO     | ============================================================
+2026-06-07 10:17:17 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:17:17 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:17:17 | INFO     | 
+============================================================
+2026-06-07 10:17:17 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:17:17 | INFO     | ============================================================
+
+2026-06-07 10:17:17 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (141738s > 900s).
+2026-06-07 10:17:17 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:17:38 | WARNING  | Mercado en pausa para EURUSD [monitor_runtime]: ultimo tick demasiado viejo (141759s > 900s).
+2026-06-07 10:18:17 | INFO     | ============================================================
+2026-06-07 10:18:17 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:18:17 | INFO     | ============================================================
+2026-06-07 10:18:17 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:18:17 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:18:17 | INFO     | 
+============================================================
+2026-06-07 10:18:17 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:18:17 | INFO     | ============================================================
+
+2026-06-07 10:18:17 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (141797s > 900s).
+2026-06-07 10:18:17 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:19:17 | INFO     | ============================================================
+2026-06-07 10:19:17 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:19:17 | INFO     | ============================================================
+2026-06-07 10:19:17 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:19:17 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:19:17 | INFO     | 
+============================================================
+2026-06-07 10:19:17 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:19:17 | INFO     | ============================================================
+
+2026-06-07 10:19:17 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (141858s > 900s).
+2026-06-07 10:19:17 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:19:41 | WARNING  | Mercado en pausa para EURUSD [monitor_runtime]: ultimo tick demasiado viejo (141881s > 900s).
+2026-06-07 10:20:17 | INFO     | ============================================================
+2026-06-07 10:20:17 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:20:17 | INFO     | ============================================================
+2026-06-07 10:20:17 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:20:17 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:20:17 | INFO     | 
+============================================================
+2026-06-07 10:20:17 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:20:17 | INFO     | ============================================================
+
+2026-06-07 10:20:17 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (141918s > 900s).
+2026-06-07 10:20:17 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:20:48 | INFO     | ============================================================
+2026-06-07 10:20:48 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:20:48 | INFO     | ============================================================
+2026-06-07 10:20:48 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:20:48 | INFO     | ðŸš€ Ejecutando modo: PRODUCTION
+2026-06-07 10:20:48 | INFO     | 
+============================================================
+2026-06-07 10:20:48 | INFO     | MODO: PRODUCCIÃ“N
+2026-06-07 10:20:48 | INFO     | ============================================================
+
+2026-06-07 10:20:48 | WARNING  | Mercado en pausa para EURUSD [production]: ultimo tick demasiado viejo (141948s > 900s).
+2026-06-07 10:20:48 | INFO     | MODO PRODUCCIÃ“N EN PAUSA.
+
+2026-06-07 10:21:13 | INFO     | ============================================================
+2026-06-07 10:21:13 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:21:13 | INFO     | ============================================================
+2026-06-07 10:21:13 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:21:13 | INFO     | ðŸš€ Ejecutando modo: PRODUCTION
+2026-06-07 10:21:13 | INFO     | 
+============================================================
+2026-06-07 10:21:13 | INFO     | MODO: PRODUCCIÃ“N
+2026-06-07 10:21:13 | INFO     | ============================================================
+
+2026-06-07 10:21:13 | WARNING  | Mercado en pausa para EURUSD [production]: ultimo tick demasiado viejo (141973s > 900s).
+2026-06-07 10:21:13 | INFO     | MODO PRODUCCIÃ“N EN PAUSA.
+
+2026-06-07 10:21:20 | INFO     | ============================================================
+2026-06-07 10:21:20 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:21:20 | INFO     | ============================================================
+2026-06-07 10:21:20 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:21:20 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:21:20 | INFO     | 
+============================================================
+2026-06-07 10:21:20 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:21:20 | INFO     | ============================================================
+
+2026-06-07 10:21:20 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (141980s > 900s).
+2026-06-07 10:21:20 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:22:18 | INFO     | ============================================================
+2026-06-07 10:22:18 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:22:18 | INFO     | ============================================================
+2026-06-07 10:22:18 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:22:18 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:22:18 | INFO     | 
+============================================================
+2026-06-07 10:22:18 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:22:18 | INFO     | ============================================================
+
+2026-06-07 10:22:18 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (142039s > 900s).
+2026-06-07 10:22:18 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:23:20 | INFO     | ============================================================
+2026-06-07 10:23:20 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:23:20 | INFO     | ============================================================
+2026-06-07 10:23:20 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:23:20 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:23:20 | INFO     | 
+============================================================
+2026-06-07 10:23:20 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:23:20 | INFO     | ============================================================
+
+2026-06-07 10:23:20 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (142100s > 900s).
+2026-06-07 10:23:20 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:24:18 | INFO     | ============================================================
+2026-06-07 10:24:18 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:24:18 | INFO     | ============================================================
+2026-06-07 10:24:18 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:24:18 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:24:18 | INFO     | 
+============================================================
+2026-06-07 10:24:18 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:24:18 | INFO     | ============================================================
+
+2026-06-07 10:24:18 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (142158s > 900s).
+2026-06-07 10:24:18 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:25:21 | INFO     | ============================================================
+2026-06-07 10:25:21 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:25:21 | INFO     | ============================================================
+2026-06-07 10:25:21 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:25:21 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:25:21 | INFO     | 
+============================================================
+2026-06-07 10:25:21 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:25:21 | INFO     | ============================================================
+
+2026-06-07 10:25:21 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (142221s > 900s).
+2026-06-07 10:25:21 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:25:47 | INFO     | ============================================================
+2026-06-07 10:25:47 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:25:47 | INFO     | ============================================================
+2026-06-07 10:25:47 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:25:47 | INFO     | ðŸš€ Ejecutando modo: PRODUCTION
+2026-06-07 10:25:47 | INFO     | 
+============================================================
+2026-06-07 10:25:47 | INFO     | MODO: PRODUCCIÃ“N
+2026-06-07 10:25:47 | INFO     | ============================================================
+
+2026-06-07 10:25:47 | WARNING  | Mercado en pausa para EURUSD [production]: ultimo tick demasiado viejo (142248s > 900s).
+2026-06-07 10:25:47 | INFO     | MODO PRODUCCIÃ“N EN PAUSA.
+
+2026-06-07 10:26:11 | INFO     | ============================================================
+2026-06-07 10:26:11 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:26:11 | INFO     | ============================================================
+2026-06-07 10:26:11 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:26:11 | INFO     | ðŸš€ Ejecutando modo: PRODUCTION
+2026-06-07 10:26:11 | INFO     | 
+============================================================
+2026-06-07 10:26:11 | INFO     | MODO: PRODUCCIÃ“N
+2026-06-07 10:26:11 | INFO     | ============================================================
+
+2026-06-07 10:26:11 | WARNING  | Mercado en pausa para EURUSD [production]: ultimo tick demasiado viejo (142271s > 900s).
+2026-06-07 10:26:11 | INFO     | MODO PRODUCCIÃ“N EN PAUSA.
+
+2026-06-07 10:26:18 | INFO     | ============================================================
+2026-06-07 10:26:18 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:26:18 | INFO     | ============================================================
+2026-06-07 10:26:18 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:26:18 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:26:18 | INFO     | 
+============================================================
+2026-06-07 10:26:18 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:26:18 | INFO     | ============================================================
+
+2026-06-07 10:26:18 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (142278s > 900s).
+2026-06-07 10:26:18 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:27:16 | INFO     | ============================================================
+2026-06-07 10:27:16 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:27:16 | INFO     | ============================================================
+2026-06-07 10:27:16 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:27:16 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:27:16 | INFO     | 
+============================================================
+2026-06-07 10:27:16 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:27:16 | INFO     | ============================================================
+
+2026-06-07 10:27:16 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (142336s > 900s).
+2026-06-07 10:27:16 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:27:38 | WARNING  | Mercado en pausa para EURUSD [monitor_runtime]: ultimo tick demasiado viejo (142358s > 900s).
+2026-06-07 10:28:18 | INFO     | ============================================================
+2026-06-07 10:28:18 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:28:18 | INFO     | ============================================================
+2026-06-07 10:28:18 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:28:18 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:28:18 | INFO     | 
+============================================================
+2026-06-07 10:28:18 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:28:18 | INFO     | ============================================================
+
+2026-06-07 10:28:18 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (142398s > 900s).
+2026-06-07 10:28:18 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:29:18 | INFO     | ============================================================
+2026-06-07 10:29:18 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:29:18 | INFO     | ============================================================
+2026-06-07 10:29:18 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:29:18 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:29:18 | INFO     | 
+============================================================
+2026-06-07 10:29:18 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:29:18 | INFO     | ============================================================
+
+2026-06-07 10:29:18 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (142458s > 900s).
+2026-06-07 10:29:18 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:29:38 | WARNING  | Mercado en pausa para EURUSD [monitor_runtime]: ultimo tick demasiado viejo (142478s > 900s).
+2026-06-07 10:30:16 | INFO     | ============================================================
+2026-06-07 10:30:16 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:30:16 | INFO     | ============================================================
+2026-06-07 10:30:16 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:30:16 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:30:16 | INFO     | 
+============================================================
+2026-06-07 10:30:16 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:30:16 | INFO     | ============================================================
+
+2026-06-07 10:30:16 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (142517s > 900s).
+2026-06-07 10:30:16 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:30:46 | INFO     | ============================================================
+2026-06-07 10:30:46 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:30:46 | INFO     | ============================================================
+2026-06-07 10:30:46 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:30:46 | INFO     | ðŸš€ Ejecutando modo: PRODUCTION
+2026-06-07 10:30:46 | INFO     | 
+============================================================
+2026-06-07 10:30:46 | INFO     | MODO: PRODUCCIÃ“N
+2026-06-07 10:30:46 | INFO     | ============================================================
+
+2026-06-07 10:30:46 | WARNING  | Mercado en pausa para EURUSD [production]: ultimo tick demasiado viejo (142546s > 900s).
+2026-06-07 10:30:46 | INFO     | MODO PRODUCCIÃ“N EN PAUSA.
+
+2026-06-07 10:31:24 | INFO     | ============================================================
+2026-06-07 10:31:24 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:31:24 | INFO     | ============================================================
+2026-06-07 10:31:24 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:31:24 | INFO     | ðŸš€ Ejecutando modo: PRODUCTION
+2026-06-07 10:31:24 | INFO     | 
+============================================================
+2026-06-07 10:31:24 | INFO     | MODO: PRODUCCIÃ“N
+2026-06-07 10:31:24 | INFO     | ============================================================
+
+2026-06-07 10:31:24 | WARNING  | Mercado en pausa para EURUSD [production]: ultimo tick demasiado viejo (142584s > 900s).
+2026-06-07 10:31:24 | INFO     | MODO PRODUCCIÃ“N EN PAUSA.
+
+2026-06-07 10:31:27 | INFO     | ============================================================
+2026-06-07 10:31:27 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:31:27 | INFO     | ============================================================
+2026-06-07 10:31:27 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:31:27 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:31:27 | INFO     | 
+============================================================
+2026-06-07 10:31:27 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:31:27 | INFO     | ============================================================
+
+2026-06-07 10:31:27 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (142587s > 900s).
+2026-06-07 10:31:27 | INFO     | MODO SYNC TRADES EN PAUSA.
+
+2026-06-07 10:32:26 | INFO     | ============================================================
+2026-06-07 10:32:26 | INFO     | TRADING PIPELINE INICIADO
+2026-06-07 10:32:26 | INFO     | ============================================================
+2026-06-07 10:32:26 | INFO     | ðŸ“ Directorios de trabajo configurados
+2026-06-07 10:32:26 | INFO     | ðŸš€ Ejecutando modo: SYNC_TRADES
+2026-06-07 10:32:26 | INFO     | 
+============================================================
+2026-06-07 10:32:26 | INFO     | MODO: SYNC TRADES
+2026-06-07 10:32:26 | INFO     | ============================================================
+
+2026-06-07 10:32:26 | WARNING  | Mercado en pausa para EURUSD [sync_trades]: ultimo tick demasiado viejo (142646s > 900s).
+2026-06-07 10:32:26 | INFO     | MODO SYNC TRADES EN PAUSA.
+

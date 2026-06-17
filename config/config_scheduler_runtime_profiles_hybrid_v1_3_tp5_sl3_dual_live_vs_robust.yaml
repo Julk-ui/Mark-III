@@ -1,0 +1,35 @@
+scheduler:
+  enabled: true
+
+  cron:
+  backtest_cron:
+  production_cron:
+  sync_trades_cron:
+
+  backtest_interval_minutes:
+  production_interval_minutes: 5
+  sync_trades_interval_minutes: 1
+  monitor_runtime_interval_seconds: 30
+
+  production_offset_seconds: 20
+  sync_trades_offset_seconds: 50
+  monitor_runtime_offset_seconds: 12
+
+  production_profiles:
+    - aggressive_hybrid_v1_3_tp5_sl3
+    - aggressive_hybrid_v1_3_tp5_sl3_directional_robust
+
+  sync_trades_profiles:
+    - aggressive_hybrid_v1_3_tp5_sl3
+    - aggressive_hybrid_v1_3_tp5_sl3_directional_robust
+
+  monitor_runtime_profiles:
+    - aggressive_hybrid_v1_3_tp5_sl3
+
+  production_profile_spacing_seconds: 25
+  sync_trades_profile_spacing_seconds: 12
+  monitor_runtime_profile_spacing_seconds: 8
+
+  timezone: "America/Bogota"
+  log_file: "logs/automation_scheduler_dual_live_vs_robust.log"
+  production_use_optimized_config: true

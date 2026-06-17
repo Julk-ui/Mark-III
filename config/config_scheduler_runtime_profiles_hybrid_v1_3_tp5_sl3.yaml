@@ -1,0 +1,35 @@
+# ==========================================================
+# SCHEDULER OPERATIVO PARA aggressive_hybrid_v1_3_tp5_sl3
+# Uso:
+# - correr production + sync_trades solo para la release activa
+#   del perfil aggressive_hybrid_v1_3_tp5_sl3
+# - evita mezclarlo con tp4_sl2_5 o schedulers duales
+# ==========================================================
+
+scheduler:
+  enabled: true
+
+  cron:
+  backtest_cron:
+  production_cron:
+  sync_trades_cron:
+
+  backtest_interval_minutes:
+  production_interval_minutes: 5
+  sync_trades_interval_minutes: 1
+  monitor_runtime_interval_seconds: 15
+
+  production_offset_seconds: 20
+  monitor_runtime_offset_seconds: 8
+  production_profiles:
+    - aggressive_hybrid_v1_3_tp5_sl3
+
+  sync_trades_profile: aggressive_hybrid_v1_3_tp5_sl3
+  monitor_runtime_profile: aggressive_hybrid_v1_3_tp5_sl3
+
+  production_profile_spacing_seconds: 25
+  sync_trades_offset_seconds: 50
+
+  timezone: "America/Bogota"
+  log_file: "logs/automation_scheduler.log"
+  production_use_optimized_config: true

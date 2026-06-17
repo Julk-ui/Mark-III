@@ -14,7 +14,7 @@
 # - este scheduler usa los perfiles canonicos:
 #   aggressive, balanced, conservative
 # - cada perfil necesita haber publicado su active_release_<perfil>.json
-# - por defecto arranca solo con balanced para una transicion gradual
+# - ahora queda habilitado para aggressive + balanced
 # ==========================================================
 
 scheduler:
@@ -30,11 +30,10 @@ scheduler:
   sync_trades_interval_minutes: 1
 
   # Perfiles canonicos habilitados para produccion.
-  # Empieza con balanced y luego agrega aggressive o conservative
-  # cuando confirmemos sus campeones.
+  # Queda activo aggressive + balanced.
   production_profiles:
+    - aggressive
     - balanced
-    # - aggressive
     # - conservative
 
   # Perfil base para sync_trades del runtime serio.

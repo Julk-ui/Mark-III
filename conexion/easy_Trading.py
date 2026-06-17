@@ -202,6 +202,25 @@ class Basic_funcs:
             return None
         return round(float(price), int(max(digits, 0)))
 
+    def _normalize_volume(self, volume: float | None, symbol_spec: dict) -> float:
+        volume_value = float(volume or 0.0)
+        if volume_value <= 0:
+            return 0.0
+
+        min_lot = float(symbol_spec.get("volume_min", 0.01) or 0.01)
+        lot_step = float(symbol_spec.get("volume_step", 0.01) or 0.01)
+        if lot_step <= 0:
+            lot_step = min_lot
+
+        units = int((volume_value + 1e-12) / lot_step)
+        normalized = units * lot_step
+        if normalized + 1e-12 < min_lot:
+            return 0.0
+
+        step_str = f"{lot_step:.10f}".rstrip("0")
+        precision = len(step_str.split(".")[1]) if "." in step_str else 0
+        return float(round(normalized, precision))
+
     def _sanitize_protection_levels(
         self,
         side: str,
@@ -482,6 +501,139 @@ class Basic_funcs:
             "symbol_spec": symbol_spec,
         }
 
+    def open_pending_limit_order(
+        self,
+        *,
+        symbol: str,
+        volume: float,
+        side: str,
+        price: float,
+        comment: str,
+        sl: float | None = None,
+        tp: float | None = None,
+        magic: int = 202204,
+    ) -> dict:
+        """Coloca una orden pendiente LIMIT y devuelve un resultado normalizado."""
+        self._connect()
+
+        side_upper = str(side).upper()
+        if side_upper not in {"BUY", "SELL"}:
+            raise ValueError(f"Side no soportado para pending limit: {side}")
+
+        mt5.symbol_select(symbol, True)
+        tick = mt5.symbol_info_tick(symbol)
+        symbol_spec = self.get_symbol_spec(symbol)
+        if tick is None or not symbol_spec:
+            return {
+                "success": False,
+                "retcode": None,
+                "comment": f"No hay tick/spec disponible para {symbol}",
+                "order": None,
+                "price": None,
+                "request": None,
+            }
+
+        normalized_volume = self._normalize_volume(volume, symbol_spec)
+        if normalized_volume <= 0:
+            return {
+                "success": False,
+                "retcode": None,
+                "comment": f"Volumen invalido para pending limit en {symbol}: {volume}",
+                "order": None,
+                "price": None,
+                "request": None,
+            }
+
+        digits = int(symbol_spec.get("digits", 5) or 5)
+        point = float(symbol_spec.get("point", 0.0) or 0.0)
+        point = point if point > 0 else 0.0001
+        stops_level = int(symbol_spec.get("trade_stops_level", 0) or 0)
+        min_distance = max(stops_level * point, point)
+
+        current_bid = float(tick.bid)
+        current_ask = float(tick.ask)
+        limit_price = self._normalize_price(float(price), digits)
+
+        if side_upper == "BUY":
+            if limit_price >= current_ask - min_distance:
+                return {
+                    "success": False,
+                    "retcode": None,
+                    "comment": (
+                        f"BUY LIMIT invalida para {symbol}: price={limit_price} debe quedar "
+                        f"por debajo del ask actual {current_ask:.{digits}f}"
+                    ),
+                    "order": None,
+                    "price": limit_price,
+                    "request": None,
+                }
+            order_type = mt5.ORDER_TYPE_BUY_LIMIT
+        else:
+            if limit_price <= current_bid + min_distance:
+                return {
+                    "success": False,
+                    "retcode": None,
+                    "comment": (
+                        f"SELL LIMIT invalida para {symbol}: price={limit_price} debe quedar "
+                        f"por encima del bid actual {current_bid:.{digits}f}"
+                    ),
+                    "order": None,
+                    "price": limit_price,
+                    "request": None,
+                }
+            order_type = mt5.ORDER_TYPE_SELL_LIMIT
+
+        protection = self._sanitize_protection_levels(
+            side=side_upper,
+            reference_price=float(limit_price),
+            sl=sl,
+            tp=tp,
+            symbol_spec=symbol_spec,
+        )
+
+        request = {
+            "action": mt5.TRADE_ACTION_PENDING,
+            "symbol": symbol,
+            "volume": float(normalized_volume),
+            "type": order_type,
+            "price": float(limit_price),
+            "magic": int(magic),
+            "comment": str(comment)[:31],
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": getattr(mt5, "ORDER_FILLING_RETURN", mt5.ORDER_FILLING_FOK),
+        }
+        if protection["sl"] is not None:
+            request["sl"] = float(protection["sl"])
+        if protection["tp"] is not None:
+            request["tp"] = float(protection["tp"])
+
+        res = mt5.order_send(request)
+        if res is None:
+            return {
+                "success": False,
+                "retcode": None,
+                "comment": f"order_send retornó None: {mt5.last_error()}",
+                "order": None,
+                "price": limit_price,
+                "request": request,
+            }
+
+        raw = res._asdict()
+        return {
+            "success": raw.get("retcode") == mt5.TRADE_RETCODE_DONE,
+            "retcode": raw.get("retcode"),
+            "comment": raw.get("comment"),
+            "order": raw.get("order"),
+            "deal": raw.get("deal"),
+            "price": limit_price,
+            "request": request,
+            "requested_sl": sl,
+            "requested_tp": tp,
+            "sent_sl": protection["sl"],
+            "sent_tp": protection["tp"],
+            "symbol_spec": symbol_spec,
+        }
+
     def obtener_ordenes_pendientes(self) -> pd.DataFrame:
         try:
             ordenes = mt5.orders_get()
@@ -490,6 +642,50 @@ class Basic_funcs:
             return pd.DataFrame(list(ordenes), columns=ordenes[0]._asdict().keys())
         except Exception:
             return pd.DataFrame()
+
+    def get_pending_orders(
+        self,
+        *,
+        symbol: str | None = None,
+        magic: int | None = None,
+        ticket: int | None = None,
+    ) -> pd.DataFrame:
+        """Devuelve ordenes pendientes activas opcionalmente filtradas."""
+        self._connect()
+        df = self.obtener_ordenes_pendientes()
+        if df.empty:
+            return df
+
+        if symbol is not None and "symbol" in df.columns:
+            df = df[df["symbol"] == symbol]
+        if magic is not None and "magic" in df.columns:
+            df = df[pd.to_numeric(df["magic"], errors="coerce").fillna(0).astype(int) == int(magic)]
+        if ticket is not None and "ticket" in df.columns:
+            df = df[pd.to_numeric(df["ticket"], errors="coerce").fillna(-1).astype(int) == int(ticket)]
+        return df.reset_index(drop=True)
+
+    def cancel_pending_order(self, *, order_ticket: int) -> dict:
+        """Cancela una orden pendiente por ticket."""
+        self._connect()
+        request = {
+            "action": mt5.TRADE_ACTION_REMOVE,
+            "order": int(order_ticket),
+        }
+        res = mt5.order_send(request)
+        if res is None:
+            return {
+                "success": False,
+                "retcode": None,
+                "comment": f"order_send retornó None: {mt5.last_error()}",
+                "request": request,
+            }
+        raw = res._asdict()
+        return {
+            "success": raw.get("retcode") == mt5.TRADE_RETCODE_DONE,
+            "retcode": raw.get("retcode"),
+            "comment": raw.get("comment"),
+            "request": request,
+        }
 
     def remover_operacion_pendiente(self, nom_est: str) -> None:
         df = self.obtener_ordenes_pendientes()
@@ -517,6 +713,84 @@ class Basic_funcs:
                 'type_filling': mt5.ORDER_FILLING_FOK
             }
             mt5.order_send(req)
+
+    def close_position_volume(
+        self,
+        *,
+        symbol: str,
+        position_ticket: int,
+        volume: float,
+        side: str,
+        comment: str = "PartialClose",
+        deviation: int = 20,
+    ) -> dict:
+        """Cierra parcialmente una posicion abierta y devuelve un resultado normalizado."""
+        self._connect()
+
+        side_upper = str(side).upper()
+        if side_upper not in {"BUY", "SELL"}:
+            raise ValueError(f"Side no soportado para cierre parcial: {side}")
+
+        symbol_spec = self.get_symbol_spec(symbol)
+        tick = self.get_symbol_tick(symbol)
+        if not symbol_spec or tick is None:
+            return {
+                "success": False,
+                "retcode": None,
+                "comment": f"No se pudo obtener spec/tick para {symbol}",
+                "request": None,
+                "closed_volume": 0.0,
+            }
+
+        normalized_volume = self._normalize_volume(volume, symbol_spec)
+        if normalized_volume <= 0:
+            return {
+                "success": False,
+                "retcode": None,
+                "comment": f"Volumen parcial invalido para {symbol}: {volume}",
+                "request": None,
+                "closed_volume": 0.0,
+            }
+
+        digits = int(symbol_spec.get("digits", 5) or 5)
+        order_type = mt5.ORDER_TYPE_SELL if side_upper == "BUY" else mt5.ORDER_TYPE_BUY
+        price = self._normalize_price(
+            float(tick["bid"] if side_upper == "BUY" else tick["ask"]),
+            digits,
+        )
+
+        request = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": symbol,
+            "volume": float(normalized_volume),
+            "type": order_type,
+            "position": int(position_ticket),
+            "price": price,
+            "deviation": int(deviation),
+            "comment": str(comment)[:31],
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_FOK,
+        }
+        res = mt5.order_send(request)
+        if res is None:
+            return {
+                "success": False,
+                "retcode": None,
+                "comment": f"order_send retorno None: {mt5.last_error()}",
+                "request": request,
+                "closed_volume": 0.0,
+            }
+
+        raw = res._asdict()
+        return {
+            "success": raw.get("retcode") == mt5.TRADE_RETCODE_DONE,
+            "retcode": raw.get("retcode"),
+            "comment": raw.get("comment"),
+            "order": raw.get("order"),
+            "deal": raw.get("deal"),
+            "request": request,
+            "closed_volume": float(normalized_volume),
+        }
 
     def get_opened_positions(self, par: Optional[str] = None):
         try:

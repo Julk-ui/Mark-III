@@ -1,0 +1,10 @@
+{
+  "release_id": "20260506_051115",
+  "activated_at": "2026-05-07T10:05:41",
+  "champion_model": "ARIMA",
+  "strategy_profile": "balanced",
+  "config_path": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\config\\config_optimizado_20260506_051115.yaml",
+  "models_dir": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\outputs\\models\\releases\\20260506_051115",
+  "summary_csv_path": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\outputs\\backtest\\summary_best_runs_20260506_051115.csv",
+  "summary_xlsx_path": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\outputs\\backtest\\summary_best_runs_20260506_051115.xlsx"
+}

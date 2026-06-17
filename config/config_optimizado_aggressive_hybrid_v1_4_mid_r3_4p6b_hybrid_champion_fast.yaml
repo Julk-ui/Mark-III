@@ -1,0 +1,543 @@
+mt5:
+  login: 68238343
+  password: Colombia123*
+  server: RoboForex-Pro
+  path: C:\Program Files\RoboForex - MetaTrader 5\terminal64.exe
+strategy_profile:
+  name: aggressive_hybrid_v1_4_mid_r3_4p6b_hybrid_champion_fast
+prediction_stack:
+  mode: hybrid_primary_plus_filter
+  primary_models:
+  - ARIMA
+  - HistGradientBoosting
+  filter_models:
+  - HistGradientBoostingClassifier
+  - RandomForestClassifier
+  - LogisticRegressionClassifier
+  require_alignment: true
+  filter_gate_mode: support_score
+  support_score_min: 0.08
+  contradiction_margin: 0.1
+  top_k_primary_for_bundle_eval: 2
+  top_k_filter_for_bundle_eval: 3
+validation:
+  mode: last_n
+  n: 450
+  test_size: 0.2
+data:
+  symbol: EURUSD
+  timeframe: M5
+  n_bars: 5500
+  use_cache: true
+  cache_expiry_hours: 1
+  runtime_use_cache: false
+  runtime_cache_expiry_minutes: 5
+  pip_size: 0.0001
+data_cleaning:
+  handle_missing: ffill
+  outlier_method: iqr
+  outlier_threshold: 3.0
+  handle_outliers: cap
+  remove_duplicates: true
+  validate_ohlc: true
+  min_valid_ratio: 0.9
+eda:
+  enabled: false
+  output_dir: outputs/eda
+  price_col: Close
+features:
+  returns:
+    enabled: true
+    periods:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 10
+  technical_indicators:
+    enabled: true
+    indicators:
+    - sma_20
+    - sma_50
+    - ema_12
+    - ema_26
+    - rsi_14
+    - macd
+    - bollinger_bands
+    - atr_14
+    - roc_6
+    - tick_volume_roc_3
+    - tick_volume_zscore_20
+    - directional_volume_proxy_zscore_20
+    - mfi_14
+    - adx_14
+  lag_features:
+    enabled: true
+    columns:
+    - Close
+    - Volume
+    lags:
+    - 1
+    - 2
+    - 3
+    - 5
+    - 10
+unsupervised:
+  enabled: false
+models:
+- name: Momentum
+  enabled: true
+  params:
+    lookback: 1.0
+  selection_role: baseline
+  is_best: false
+- name: ARIMA
+  enabled: true
+  params:
+    d: 0.0
+    p: 4.0
+    q: 0.0
+  selection_role: candidate
+  is_best: false
+- name: HistGradientBoosting
+  enabled: true
+  params:
+    learning_rate: 0.05
+    max_depth: 4.0
+    max_iter: 100.0
+    min_samples_leaf: 10.0
+  selection_role: candidate
+  is_best: false
+- name: HistGradientBoostingClassifier
+  enabled: true
+  params:
+    learning_rate: 0.05
+    max_depth: 6.0
+    max_iter: 150.0
+    min_samples_leaf: 10.0
+  selection_role: candidate
+  is_best: false
+- name: RandomForestClassifier
+  enabled: true
+  params:
+    max_depth: 6.0
+    min_samples_leaf: 5.0
+    n_estimators: 200.0
+  selection_role: candidate
+  is_best: false
+- name: LogisticRegressionClassifier
+  enabled: true
+  params:
+    max_iter: 400.0
+    C: 1.0
+  selection_role: candidate
+  is_best: false
+backtest:
+  enabled: true
+  target_mode: return_regression
+  target: ReturnFwd_3
+  filter_target: BarrierReturn_4p_6b
+  barrier_pips: 4
+  barrier_horizon_bars: 6
+  barrier_price_col: Close
+  barrier_high_col: High
+  barrier_low_col: Low
+  initial_train: 2000
+  step: 8
+  horizon: 3
+  audit_followthrough_bars: 8
+  pip_size: 0.0001
+  threshold_pips: 2.5
+  plot_scale: price_target
+  risk_free: 0.0
+  periods_per_year: 72576
+  metrics:
+  - mae
+  - rmse
+  - hit_rate
+  - dm_stat
+  - dm_pvalue
+  - sharpe
+  - sortino
+  - calmar
+  - max_drawdown
+  - profit_factor
+  - win_rate
+  - payoff_ratio
+  - consistency_ratio
+  - avg_trade_return
+  - n_test_points
+  - n_trades
+output:
+  dir: outputs
+  save_predictions: false
+  save_models: true
+  save_plots: false
+  formats:
+  - csv
+trading:
+  min_pips_signal: 2.5
+  enable_confidence_filter: true
+  min_confidence: 0.48
+  barrier_probability_threshold: 0.5
+  barrier_probability_margin: 0.02
+  signal_confirmation:
+    enabled: false
+  execute_best_model_only: true
+  auto_execute_orders: false
+  allow_multiple_positions: true
+  magic_number: 202361
+  order_comment_prefix: MarkIII_HybChamp
+  order_deviation_points: 20
+  report_lookback_days: 30
+risk:
+  risk_per_trade_pct: 0.01
+  max_total_open_risk_pct: 0.03
+  halt_on_daily_loss: false
+  daily_loss_limit_pct: 0.0
+  daily_loss_measure: equity
+  pre_trade_risk_validation: true
+  risk_validation_tolerance_pct: 0.05
+  block_new_entries_without_sl: true
+  sl_mode: atr
+  fixed_sl_pips: 3.0
+  atr_sl_multiplier: 1.2
+  atr_sl_min_pips: 4.0
+  atr_sl_max_pips: 11.0
+  tp_rr_ratio: 1.6
+  tp_use_predicted_move: true
+  tp_min_pips: 0.0
+  tp_max_pips: 15.0
+  entry_mode: close
+  atr_entry_mult: 0.0
+execution:
+  mode: backtest
+  parallel: false
+  n_jobs: -1
+model_selection:
+  primary_metric: directional_balance_score
+  primary_greater_is_better: true
+  secondary_metric: directional_pf_floor
+  secondary_greater_is_better: true
+  min_trades: 20
+  min_test_points: 80
+  publish_requires_candidate_thresholds: true
+decision_bundle:
+  mode: hybrid_primary_plus_filter
+  name: HYBRID__ARIMA__HistGradientBoostingClassifier
+  primary_model:
+    name: ARIMA
+    params:
+      d: 0.0
+      p: 4.0
+      q: 0.0
+  filter_model:
+    name: HistGradientBoostingClassifier
+    params:
+      learning_rate: 0.05
+      max_depth: 6.0
+      max_iter: 150.0
+      min_samples_leaf: 10.0
+  require_alignment: true
+  filter_gate_mode: support_score
+  support_probability_threshold: null
+  support_probability_margin: null
+  support_score_min: 0.08
+  contradiction_margin: 0.1
+  rules:
+    min_pips_signal: 2.5
+    min_confidence: 0.48
+    barrier_probability_threshold: 0.5
+    barrier_probability_margin: 0.02
+    barrier_pips: 4.0
+    barrier_horizon_bars: 6
+entry_management:
+  enabled: true
+  mode: split_retrace_limit
+  initial_market_fraction: 0.5
+  pending_fraction: 0.5
+  retrace_fraction_of_stop: 0.55
+  pending_order_type: limit
+  cancel_pending_after_bars: 2
+  cancel_pending_on_position_close: true
+  disable_pending_when_filter_hold: true
+  comment_prefix: EM
+entry_grid:
+  enabled: true
+  mode: risk_based_ladder
+  apply_to_profiles:
+  - strong_trend
+  - normal_trend
+  require_confirmed_bundle: true
+  allow_filter_hold_variant: false
+  runner_legs: 1
+  comment_prefix: EG
+  legs:
+  - leg_id: leg_1
+    entry_type: market_or_breakout
+    volume_weight: 0.25
+    spacing_fraction_of_stop: 0.0
+    expiry_bars: 0
+  - leg_id: leg_2
+    entry_type: limit
+    volume_weight: 0.35
+    spacing_fraction_of_stop: 0.25
+    expiry_bars: 1
+  - leg_id: leg_3
+    entry_type: limit
+    volume_weight: 0.4
+    spacing_fraction_of_stop: 0.55
+    expiry_bars: 2
+entry_staging:
+  enabled: true
+  mode: candidate_retrace
+  max_stage_bars: 2
+  min_primary_confidence: 0.62
+  min_abs_predicted_pips: 2.8
+  allow_stage_on_filter_contradiction_alignment: true
+  contradiction_stage_primary_confidence_min: 0.7
+  contradiction_stage_predicted_pips_min: 3.5
+  contradiction_stage_adx_min: 8.0
+  contradiction_stage_roc_abs_min: 0.0006
+  contradiction_stage_directional_volume_abs_min: 0.5
+  contradiction_stage_retrace_fraction: 0.25
+  contradiction_stage_max_stage_bars: 1
+  contradiction_stage_breakout_partial_fraction: 0.0
+  allow_stage_on_strong_primary_filter_hold: true
+  strong_primary_hold_confidence_min: 0.82
+  strong_primary_hold_predicted_pips_min: 3.2
+  strong_primary_hold_adx_min: 25.0
+  strong_primary_hold_roc_abs_min: 0.00035
+  strong_primary_hold_retrace_fraction: 0.25
+  strong_primary_hold_max_stage_bars: 1
+  strong_primary_hold_breakout_partial_fraction: 0.2
+  allow_stage_on_medium_primary_filter_hold: true
+  medium_primary_hold_confidence_min: 0.64
+  medium_primary_hold_predicted_pips_min: 2.8
+  medium_primary_hold_adx_min: 18.0
+  medium_primary_hold_roc_abs_min: 8.0e-05
+  medium_primary_hold_roc_column: ROC_3
+  medium_primary_hold_retrace_fraction: 0.25
+  medium_primary_hold_max_stage_bars: 1
+  medium_primary_hold_breakout_partial_fraction: 0.15
+  medium_primary_hold_immediate_market_enabled: false
+  medium_primary_hold_partial_enabled: false
+  medium_primary_hold_partial_fraction: 0.1
+  medium_primary_hold_activation_delay_bars: 1
+  medium_primary_hold_rebuild_on_activation: true
+  medium_primary_hold_grace_enabled: true
+  medium_primary_hold_grace_max_bars: 4
+  medium_primary_hold_grace_predicted_pips_min: 2.8
+  medium_primary_hold_preserve_if_armed_on_confidence_drop: true
+  direct_confirmed_revalidate_on_activation: true
+  direct_confirmed_cancel_if_primary_mismatch: true
+  direct_confirmed_cancel_if_confidence_drops: true
+  direct_confirmed_cancel_if_predicted_move_drops: true
+  direct_confirmed_activation_confidence_min: 0.55
+  direct_confirmed_activation_predicted_pips_min: 3.0
+  direct_confirmed_extend_if_aligned: true
+  direct_confirmed_extension_bars: 1
+  direct_confirmed_max_extensions: 1
+  direct_confirmed_extension_confidence_min: 0.75
+  direct_confirmed_extension_predicted_pips_min: 4.0
+  direct_confirmed_hold_grace_enabled: true
+  direct_confirmed_hold_grace_max_bars: 1
+  direct_confirmed_hold_grace_predicted_pips_min: 3.0
+  direct_confirmed_keep_better_active_candidate: true
+  direct_confirmed_strong_trend_retrace_fraction: 0.2
+  direct_confirmed_normal_trend_retrace_fraction: 0.25
+  direct_confirmed_weak_trend_retrace_fraction: 0.4
+  direct_confirmed_max_entry_improvement_pct_of_predicted_pips: 0.3
+  direct_confirmed_max_entry_improvement_min_pips: 0.8
+  direct_confirmed_strong_trend_partial_enabled: true
+  direct_confirmed_strong_trend_partial_fraction: 0.15
+  direct_confirmed_strong_trend_confidence_min: 0.85
+  direct_confirmed_strong_trend_predicted_pips_min: 6.0
+  direct_confirmed_normal_trend_partial_enabled: true
+  direct_confirmed_normal_trend_partial_fraction: 0.1
+  direct_confirmed_normal_trend_confidence_min: 0.7
+  direct_confirmed_normal_trend_predicted_pips_min: 3.2
+  direct_confirmed_immediate_extreme_entry_guard_enabled: true
+  direct_confirmed_immediate_extreme_entry_range_fraction: 0.2
+  direct_confirmed_immediate_extreme_entry_min_range_pips: 2.0
+  pilot_entry_enabled: true
+  pilot_confidence_min: 0.55
+  pilot_fraction_of_full_size: 0.25
+  pilot_allow_on_filter_contradiction: false
+  pilot_convert_to_staged: true
+  pilot_market_fallback_enabled: false
+  pilot_retrace_fraction: 0.5
+  pilot_allowed_profiles:
+  - strong_trend
+  - normal_trend
+  pilot_revalidate_on_activation: true
+  pilot_cancel_if_primary_mismatch: true
+  pilot_cancel_if_filter_contradicted: true
+  pilot_cancel_if_confidence_drops: true
+  pilot_cancel_if_predicted_move_drops: true
+  adaptive_profile_enabled: true
+  adaptive_roc_column: ROC_6
+  adaptive_adx_column: ADX_14
+  adaptive_directional_volume_column: DirectionalVolumeProxy_ZScore_20
+  strong_trend_adx_min: 35.0
+  normal_trend_adx_min: 22.0
+  strong_trend_roc_abs_min: 0.00045
+  normal_trend_roc_abs_min: 0.0002
+  strong_trend_volume_abs_min: 0.35
+  normal_trend_volume_abs_min: 0.05
+  strong_trend_retrace_fraction: 0.2
+  normal_trend_retrace_fraction: 0.35
+  weak_trend_retrace_fraction: 0.55
+  strong_trend_max_stage_bars: 1
+  normal_trend_max_stage_bars: 2
+  weak_trend_max_stage_bars: 2
+  strong_trend_breakout_partial_fraction: 0.35
+  normal_trend_breakout_partial_fraction: 0.2
+  weak_trend_breakout_partial_fraction: 0.0
+  breakout_trigger_fraction_of_stop: 0.12
+  breakout_min_trigger_pips: 0.8
+  convert_direct_filter_hold_to_staged: true
+  convert_direct_confirmed_to_staged: true
+  direct_filter_hold_retrace_fraction: 0.5
+  direct_filter_hold_revalidate_on_activation: true
+  direct_filter_hold_cancel_if_primary_mismatch: true
+  direct_filter_hold_cancel_if_primary_hold_weak: true
+  direct_filter_hold_activation_hold_confidence_min: 0.5
+  direct_filter_hold_activation_predicted_pips_min: 2.8
+  direct_filter_hold_cancel_on_soft_context_contradiction: true
+  direct_filter_hold_stop_buffer_pips: 0.3
+  allow_stage_on_early_structural_reversal: true
+  early_reversal_short_momentum_column: ROC_3
+  early_reversal_directional_volume_column: DirectionalVolumeProxy_ZScore_20
+  early_reversal_structure_score3_column: StructureScore3
+  early_reversal_structure_score6_column: StructureScore6
+  early_reversal_break_above_prev_high_column: BreakAbovePrevHigh
+  early_reversal_break_below_prev_low_column: BreakBelowPrevLow
+  early_reversal_break_above_recent_high3_column: BreakAboveRecentHigh3
+  early_reversal_break_below_recent_low3_column: BreakBelowRecentLow3
+  early_reversal_retrace_fraction: 0.2
+  early_reversal_max_stage_bars: 1
+  early_reversal_breakout_partial_fraction: 0.15
+  early_reversal_confidence_min: 0.72
+  early_reversal_predicted_pips_min: 3.6
+  early_reversal_short_roc_abs_min: 0.00015
+  early_reversal_adx_min: 22.0
+  early_reversal_directional_volume_abs_min: 0.25
+  early_reversal_structure_score_abs_min: 0.3
+  early_reversal_relaxed_enabled: true
+  early_reversal_relaxed_confidence_min: 0.7
+  early_reversal_relaxed_predicted_pips_min: 3.6
+  early_reversal_relaxed_adx_min: 30.0
+  early_reversal_relaxed_short_roc_abs_min: 1.0e-05
+  early_reversal_relax_directional_volume_if_adx_strong: true
+  allow_stage_on_filter_lead_structural: true
+  filter_lead_structural_filter_confidence_min: 0.55
+  filter_lead_structural_primary_hold_confidence_min: 0.5
+  filter_lead_structural_predicted_pips_floor: 3.0
+  filter_lead_structural_short_momentum_column: ROC_3
+  filter_lead_structural_directional_volume_column: DirectionalVolumeProxy_ZScore_20
+  filter_lead_structural_structure_score3_column: StructureScore3
+  filter_lead_structural_structure_score6_column: StructureScore6
+  filter_lead_structural_break_above_prev_high_column: BreakAbovePrevHigh
+  filter_lead_structural_break_below_prev_low_column: BreakBelowPrevLow
+  filter_lead_structural_break_above_recent_high3_column: BreakAboveRecentHigh3
+  filter_lead_structural_break_below_recent_low3_column: BreakBelowRecentLow3
+  filter_lead_structural_retrace_fraction: 0.2
+  filter_lead_structural_max_stage_bars: 1
+  filter_lead_structural_breakout_partial_fraction: 0.12
+  filter_lead_structural_short_roc_abs_min: 0.00015
+  filter_lead_structural_adx_min: 18.0
+  filter_lead_structural_directional_volume_abs_min: 0.1
+  filter_lead_structural_structure_score_abs_min: 0.2
+  dynamic_stop_atr_fraction: 0.25
+  dynamic_stop_min_pips: 5.0
+  require_directional_volume_activation: false
+  directional_volume_column: DirectionalVolumeProxy_ZScore_20
+  directional_volume_buy_min: 0.1
+  directional_volume_sell_max: -0.1
+  allow_stage_on_filter_hold: true
+  block_stage_on_filter_contradiction: true
+  soft_support_score_min: -0.05
+  retrace_trigger_fraction_of_stop: 0.35
+  min_entry_improvement_pips: 0.8
+  allow_breakout_if_filter_upgrades: true
+  breakout_min_support_score: 0.0
+  cancel_on_opposite_primary_signal: true
+  cancel_on_filter_contradiction: true
+  context_guard_enabled: true
+  context_guard_hard_block_direct: true
+  context_guard_soft_disable_pending: true
+  context_guard_directional_volume_column: DirectionalVolumeProxy_ZScore_20
+  context_guard_close_location_column: CloseLocationValue
+  context_guard_soft_close_location_abs_min: 0.45
+  context_guard_hard_close_location_abs_min: 0.8
+  context_guard_soft_directional_volume_abs_min: 0.35
+  context_guard_hard_directional_volume_abs_min: 0.9
+  context_guard_use_body_direction: true
+  comment_prefix: ES
+trade_management:
+  enabled: true
+  move_sl_to: breakeven
+  breakeven_buffer_pips: 0.0
+  only_once_per_stage: true
+  skip_if_no_tp: true
+  comment_prefix: TM
+  break_even_stages:
+  - name: progress_50_close_30
+    trigger_progress_to_tp: 0.5
+    partial_close_fraction: 0.3
+    move_sl_to_break_even: true
+  - name: progress_70_close_50
+    trigger_progress_to_tp: 0.7
+    partial_close_fraction: 0.5
+    move_sl_to_break_even: false
+  - name: progress_85_close_80
+    trigger_progress_to_tp: 0.85
+    partial_close_fraction: 0.8
+    move_sl_to_break_even: false
+runtime_monitor:
+  enabled: true
+  recent_trade_max_bars: 3
+  min_bars_before_no_progress: 2
+  min_progress_to_keep: 0.2
+  min_profit_progress_to_manage: 0.0
+  partial_profit_progress_min: 0.25
+  protect_on_reversal: true
+  protect_on_lateralization: true
+  regime_column: ADX_14
+  momentum_column: ROC_6
+  directional_volume_column: DirectionalVolumeProxy_ZScore_20
+  close_location_column: CloseLocationValue
+  reversal_roc_abs_min: 0.00025
+  lateralization_adx_max: 18.0
+  lateralization_roc_abs_max: 0.0001
+  lateralization_dirvol_abs_max: 0.1
+  partial_close_fraction_on_weakness: 0.5
+  comment_prefix: RTM
+market_pause:
+  enabled: true
+  pause_production: true
+  pause_sync_trades: true
+  pause_runtime_monitor: true
+  max_tick_staleness_seconds: 900
+  require_positive_quotes: true
+logging:
+  enabled: true
+  level: INFO
+  to_file: true
+  file_path: logs/trading.log
+  to_console: true
+scheduler:
+  enabled: true
+  cron: null
+  backtest_cron: null
+  production_cron: null
+  sync_trades_cron: null
+  backtest_interval_minutes: 2880
+  production_interval_minutes: 5
+  sync_trades_interval_minutes: 1
+  sync_trades_offset_seconds: 30
+  timezone: America/Bogota
+  log_file: logs/automation_scheduler.log
+  production_use_optimized_config: true

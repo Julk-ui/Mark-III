@@ -1,0 +1,10 @@
+{
+  "release_id": "20260508_073316",
+  "activated_at": "2026-05-08T09:35:33",
+  "champion_model": "HistGradientBoostingClassifier",
+  "strategy_profile": "aggressive_barrier_v2",
+  "config_path": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\config\\config_optimizado_20260508_073316.yaml",
+  "models_dir": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\outputs\\models\\releases\\20260508_073316",
+  "summary_csv_path": "C:\\Users\\USER\\Documentos\\Maestria\\Mark-III\\outputs\\backtest\\summary_best_runs_20260508_073316.csv",
+  "summary_xlsx_path": null
+}

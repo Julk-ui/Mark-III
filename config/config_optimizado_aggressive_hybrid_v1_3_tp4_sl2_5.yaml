@@ -1,0 +1,319 @@
+mt5:
+  login: 68238343
+  password: Colombia123*
+  server: RoboForex-Pro
+  path: C:\Program Files\RoboForex - MetaTrader 5\terminal64.exe
+strategy_profile:
+  name: aggressive_hybrid_v1_3_tp4_sl2_5
+prediction_stack:
+  mode: hybrid_primary_plus_filter
+  primary_models:
+  - ARIMA
+  - Ridge
+  - HistGradientBoosting
+  filter_models:
+  - HistGradientBoostingClassifier
+  - LogisticRegressionClassifier
+  - ExtraTreesClassifier
+  require_alignment: true
+  filter_gate_mode: support_score
+  support_score_min: 0.08
+  contradiction_margin: 0.1
+  top_k_primary_for_bundle_eval: 3
+  top_k_filter_for_bundle_eval: 3
+validation:
+  mode: last_n
+  n: 300
+  test_size: 0.2
+data:
+  symbol: EURUSD
+  timeframe: M5
+  n_bars: 8000
+  use_cache: true
+  cache_expiry_hours: 1
+  runtime_use_cache: false
+  runtime_cache_expiry_minutes: 5
+  pip_size: 0.0001
+  additional_symbols:
+  - GBPUSD
+  - US500
+data_cleaning:
+  handle_missing: ffill
+  outlier_method: iqr
+  outlier_threshold: 3.0
+  handle_outliers: cap
+  remove_duplicates: true
+  validate_ohlc: true
+  min_valid_ratio: 0.9
+eda:
+  enabled: false
+  output_dir: outputs/eda
+  price_col: Close
+features:
+  returns:
+    enabled: true
+    periods:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 10
+  technical_indicators:
+    enabled: true
+    indicators:
+    - sma_20
+    - sma_50
+    - ema_12
+    - ema_26
+    - rsi_14
+    - macd
+    - bollinger_bands
+    - atr_14
+    - roc_6
+    - tick_volume_roc_3
+    - tick_volume_zscore_20
+    - mfi_14
+    - adx_14
+  lag_features:
+    enabled: true
+    columns:
+    - Close
+    - Volume
+    lags:
+    - 1
+    - 2
+    - 3
+    - 5
+    - 10
+unsupervised:
+  enabled: false
+models:
+- name: Momentum
+  enabled: true
+  params:
+    lookback: 1.0
+  selection_role: baseline
+  is_best: false
+- name: ARIMA
+  enabled: true
+  params:
+    d: 1.0
+    p: 1.0
+    q: 0.0
+  selection_role: candidate
+  is_best: false
+- name: Ridge
+  enabled: true
+  params:
+    alpha: 0.5
+  selection_role: candidate
+  is_best: false
+- name: HistGradientBoosting
+  enabled: true
+  params:
+    learning_rate: 0.05
+    max_depth: 6.0
+    max_iter: 100.0
+    min_samples_leaf: 10.0
+  selection_role: candidate
+  is_best: false
+- name: HistGradientBoostingClassifier
+  enabled: true
+  params:
+    learning_rate: 0.05
+    max_depth: 6.0
+    max_iter: 150.0
+    min_samples_leaf: 10.0
+  selection_role: candidate
+  is_best: false
+- name: LogisticRegressionClassifier
+  enabled: true
+  params:
+    max_iter: 400.0
+    class_weight: balanced
+  selection_role: candidate
+  is_best: false
+- name: ExtraTreesClassifier
+  enabled: true
+  params:
+    max_depth: 6.0
+    min_samples_leaf: 5.0
+    n_estimators: 150.0
+  selection_role: candidate
+  is_best: false
+backtest:
+  enabled: true
+  target_mode: return_regression
+  target: ReturnFwd_3
+  filter_target: BarrierReturn_4p_4b
+  barrier_pips: 4
+  barrier_horizon_bars: 4
+  barrier_price_col: Close
+  barrier_high_col: High
+  barrier_low_col: Low
+  initial_train: 1800
+  step: 8
+  horizon: 3
+  pip_size: 0.0001
+  threshold_pips: 3.0
+  plot_scale: price
+  risk_free: 0.0
+  periods_per_year: 72576
+  metrics:
+  - mae
+  - rmse
+  - hit_rate
+  - dm_stat
+  - dm_pvalue
+  - sharpe
+  - sortino
+  - calmar
+  - max_drawdown
+  - profit_factor
+  - win_rate
+  - payoff_ratio
+  - consistency_ratio
+  - avg_trade_return
+  - n_test_points
+  - n_trades
+output:
+  dir: outputs
+  save_predictions: true
+  save_models: true
+  save_plots: true
+  formats:
+  - csv
+  - excel
+trading:
+  min_pips_signal: 3.0
+  enable_confidence_filter: true
+  min_confidence: 0.52
+  barrier_probability_threshold: 0.5
+  barrier_probability_margin: 0.02
+  signal_confirmation:
+    enabled: false
+    require_momentum_alignment: true
+    momentum_column: ROC_6
+    momentum_buy_min: 0.0
+    momentum_sell_max: 0.0
+    require_volume_confirmation: false
+    volume_column: TickVolume_ZScore_20
+    volume_min_strength: 0.0
+    require_regime_confirmation: false
+    regime_column: ADX_14
+    regime_min_strength: 20.0
+  execute_best_model_only: true
+  auto_execute_orders: true
+  allow_multiple_positions: true
+  magic_number: 202356
+  order_comment_prefix: MarkIII_AggH13A
+  order_deviation_points: 20
+  report_lookback_days: 30
+risk:
+  risk_per_trade_pct: 0.01
+  max_total_open_risk_pct: 0.03
+  halt_on_daily_loss: false
+  daily_loss_limit_pct: 0.0
+  daily_loss_measure: equity
+  pre_trade_risk_validation: true
+  risk_validation_tolerance_pct: 0.05
+  block_new_entries_without_sl: true
+  sl_mode: fixed
+  fixed_sl_pips: 2.5
+  atr_sl_multiplier: 1.0
+  atr_sl_min_pips: 6.0
+  atr_sl_max_pips: 15.0
+  tp_rr_ratio: 1.6
+  entry_mode: close
+  atr_entry_mult: 0.0
+entry_management:
+  enabled: true
+  mode: split_retrace_limit
+  initial_market_fraction: 0.3
+  pending_fraction: 0.7
+  retrace_fraction_of_stop: 0.8
+  pending_order_type: limit
+  cancel_pending_after_bars: 3
+  cancel_pending_on_position_close: true
+  comment_prefix: EM
+trade_management:
+  enabled: true
+  move_sl_to: breakeven
+  breakeven_buffer_pips: 0.0
+  only_once_per_stage: true
+  skip_if_no_tp: true
+  comment_prefix: TM
+  break_even_stages:
+  - name: progress_50_close_30
+    trigger_progress_to_tp: 0.5
+    partial_close_fraction: 0.3
+    move_sl_to_break_even: true
+  - name: progress_70_close_50
+    trigger_progress_to_tp: 0.7
+    partial_close_fraction: 0.5
+    move_sl_to_break_even: false
+  - name: progress_85_close_80
+    trigger_progress_to_tp: 0.85
+    partial_close_fraction: 0.8
+    move_sl_to_break_even: false
+logging:
+  enabled: true
+  level: INFO
+  to_file: true
+  file_path: logs/trading.log
+  to_console: true
+execution:
+  mode: backtest
+  parallel: false
+  n_jobs: -1
+scheduler:
+  enabled: true
+  cron: null
+  backtest_cron: null
+  production_cron: null
+  sync_trades_cron: null
+  backtest_interval_minutes: 2880
+  production_interval_minutes: 5
+  sync_trades_interval_minutes: 1
+  sync_trades_offset_seconds: 30
+  timezone: America/Bogota
+  log_file: logs/automation_scheduler.log
+  production_use_optimized_config: true
+model_selection:
+  primary_metric: sharpe
+  primary_greater_is_better: true
+  secondary_metric: profit_factor
+  secondary_greater_is_better: true
+  min_trades: 20
+  min_test_points: 80
+  publish_requires_candidate_thresholds: true
+decision_bundle:
+  mode: hybrid_primary_plus_filter
+  name: HYBRID__ARIMA__HistGradientBoostingClassifier
+  primary_model:
+    name: ARIMA
+    params:
+      d: 1.0
+      p: 1.0
+      q: 0.0
+  filter_model:
+    name: HistGradientBoostingClassifier
+    params:
+      learning_rate: 0.05
+      max_depth: 6.0
+      max_iter: 150.0
+      min_samples_leaf: 10.0
+  require_alignment: true
+  filter_gate_mode: support_score
+  support_probability_threshold: null
+  support_probability_margin: null
+  support_score_min: 0.08
+  contradiction_margin: 0.1
+  rules:
+    min_pips_signal: 3.0
+    min_confidence: 0.52
+    barrier_probability_threshold: 0.5
+    barrier_probability_margin: 0.02
+    barrier_pips: 4.0
+    barrier_horizon_bars: 4

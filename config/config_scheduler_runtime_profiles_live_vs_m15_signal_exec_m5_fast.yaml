@@ -1,0 +1,51 @@
+scheduler:
+  enabled: true
+
+  cron:
+  backtest_cron:
+  production_cron:
+  sync_trades_cron:
+
+  backtest_interval_minutes:
+  production_interval_minutes: 5
+  sync_trades_interval_minutes: 1
+  monitor_runtime_interval_seconds: 60
+
+  production_offset_seconds: 20
+  sync_trades_offset_seconds: 50
+  monitor_runtime_offset_seconds: 12
+
+  production_profiles:
+    - aggressive_hybrid_v1_3_tp5_sl3
+    - aggressive_hybrid_v1_6_m15_signal_exec_m5_fast
+
+  sync_trades_profiles:
+    - aggressive_hybrid_v1_3_tp5_sl3
+    - aggressive_hybrid_v1_6_m15_signal_exec_m5_fast
+
+  monitor_runtime_profiles:
+    - aggressive_hybrid_v1_3_tp5_sl3
+    - aggressive_hybrid_v1_6_m15_signal_exec_m5_fast
+
+  production_profile_spacing_seconds: 75
+  sync_trades_profile_spacing_seconds: 12
+  monitor_runtime_profile_spacing_seconds: 8
+
+  timezone: "America/Bogota"
+  log_file: "logs/automation_scheduler_live_vs_m15_signal_exec_m5_fast.log"
+  production_use_optimized_config: true
+
+  drift_gate:
+    enabled: true
+    status_file: "drift_gate_status.json"
+    evaluate_on_modes:
+      - sync_trades
+    recent_closed_trades: 20
+    minimum_closed_trades: 8
+    warn_profit_factor_below: 0.90
+    critical_profit_factor_below: 0.60
+    warn_net_pnl_below: -20.0
+    warn_consecutive_losses: 4
+    warn_dominant_route_loss_share: 0.55
+    warn_dominant_route_loss_count: 3
+    recommend_if_conditions_at_least: 2

@@ -91,6 +91,7 @@ models:
   enabled: true
   params:
     lookback: 1.0
+  selection_role: baseline
   is_best: false
 - name: ARIMA
   enabled: true
@@ -98,7 +99,8 @@ models:
     d: 1.0
     p: 1.0
     q: 0.0
-  is_best: false
+  selection_role: candidate
+  is_best: true
 - name: PROPHET
   enabled: true
   params:
@@ -109,13 +111,15 @@ models:
     use_lagged_regressors: true
     weekly_seasonality: true
     yearly_seasonality: false
-  is_best: true
+  selection_role: candidate
+  is_best: false
 - name: RandomForestRegressor
   enabled: true
   params:
     max_depth: 4.0
     min_samples_leaf: 10.0
     n_estimators: 100.0
+  selection_role: candidate
   is_best: false
 - name: HistGradientBoosting
   enabled: true
@@ -124,6 +128,7 @@ models:
     min_samples_leaf: 10.0
     learning_rate: 0.03
     max_iter: 100.0
+  selection_role: candidate
   is_best: false
 backtest:
   enabled: true
